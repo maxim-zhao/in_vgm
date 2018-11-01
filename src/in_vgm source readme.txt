@@ -1,7 +1,7 @@
 in_vgm source files
 ===================
 
-Made with VC6. Please let me know if I've missed out any files. Uses ZLib (not included) and EMU2413 (included).
+Made with VC6. Please let me know if I've missed out any files. Uses ZLib (not included), EMU2413 (included) and a modified version of the MAME 0.36 FM core (included).
 
 Please note that I am a C newbie, so there may well be some stupid stuff in this source.
 

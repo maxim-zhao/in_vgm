@@ -61,10 +61,10 @@ void SN76489_Init(const unsigned long PSGClockValue,const unsigned long Sampling
 	Channel=4;
 	PSGStereo=0xff;
 	for (i=0;i<=3;i++) {
-		// Set volumes to 0
-		PSGVolumes[i]=0;
-		// Set all frequencies to 0
-		ToneFreqs[i]=0;
+		// Set volumes to off (0xf)
+		PSGVolumes[i]=0xf;
+		// Set all frequencies to 1
+		ToneFreqs[i]=1;
 		// Set counters to 0
 		ToneFreqVals[i]=0;
 		// Set flip-flops to 0
@@ -72,11 +72,12 @@ void SN76489_Init(const unsigned long PSGClockValue,const unsigned long Sampling
 		// Set intermediate positions to do-not-use value
 		IntermediatePos[i]=LONG_MIN;
 	};
-	// But not this one! It's not audible anyway, plus starting it at 0 messes up other stuff 
+	// Special cases for the noise channel
 	ToneFreqPos[3]=1;
+	ToneFreqs[3]=16;	// These 2 found by testing a real SMS2
+	WhiteNoise=0;		// (equivalent to relevant bits = 0)
 	// Initialise noise generator
 	NoiseShiftRegister=NoiseInitialState;
-	WhiteNoise=1;	// ?
 	// Zero clock
 	Clock=0;
 }
@@ -89,12 +90,19 @@ void SN76489_Write(const unsigned char data)
 	switch (data & 0x90) {
 	case 0x00:	// fall through
 	case 0x10:	// second frequency byte
-		if (!(Channel & 4)) {
+		if (Channel!=4) {
 		    ToneFreqs[Channel]=(data & 0x3F) << 4 | PSGFrequencyLowBits; // Set frequency register
-			// If it's very high then make it 0
-			if (ToneFreqs[Channel]<4) ToneFreqs[Channel]=0;
-			// If it's zero frequency, or if the flip-flop was at 0, set it to +1
-			if (!ToneFreqs[Channel] || !ToneFreqPos[Channel]) ToneFreqPos[Channel]=1;
+			if (Channel!=3) {
+				// If the flip-flop was at 0, set it to +1
+				if (!ToneFreqPos[Channel]) ToneFreqPos[Channel]=1;
+				// Frequency 0 is changed to 1 internally
+				if (!ToneFreqs[Channel]) ToneFreqs[Channel]=1;
+			} else {	// Last write was the noise channel
+				// So treat this value as a noise write
+			    ToneFreqs[3] = 0x10 << (data & 0x3);	// set shift rate
+				WhiteNoise=(data & 0x4);				// set feedback type
+				NoiseShiftRegister=NoiseInitialState;	// reset register
+			};
 		};
 		break;
 	case 0x80:
@@ -102,7 +110,7 @@ void SN76489_Write(const unsigned char data)
 		    ToneFreqs[3] = 0x10 << (data & 0x3);	// set shift rate
 			WhiteNoise=(data & 0x4);				// set feedback type
 			NoiseShiftRegister=NoiseInitialState;	// reset register
-			Channel=4;
+			Channel=3;
 		} else {								// First frequency byte
 			Channel=(data & 0x60) >> 5;			// select channel
 			PSGFrequencyLowBits = data & 0xF;	// remember frequency data
@@ -153,28 +161,37 @@ void SN76489_GetValues(int *left,int *right)
 
 	// Decrement tone channel counters
 	for (i=0;i<=2;++i)
-		if (ToneFreqs[i]!=0) ToneFreqVals[i]-=NumClocksForSample;
+		ToneFreqVals[i]-=NumClocksForSample;
 	
 	// Noise channel: match to tone2 or decrement its counter
 	if (ToneFreqs[3]==128) ToneFreqVals[3]=ToneFreqVals[2];
-	else if (ToneFreqs[3]!=0) ToneFreqVals[3]-=NumClocksForSample;
+	else ToneFreqVals[3]-=NumClocksForSample;
+
+// Value below which PSG does not output
+#define PSG_CUTOFF 0x6
 
 	// Tone channels:
 	for (i=0;i<=2;++i) {
-		if ((ToneFreqVals[i]<=0) && (ToneFreqs[i])) {	// If it gets below 0...
-			// Calculate how much of the sample is + and how much is -
-			// Go to floating point and include the clock fraction for extreme accuracy :D
-			// Store as long int, maybe it's faster? I'm not very good at this
-			IntermediatePos[i]=(long)((NumClocksForSample-Clock+2*ToneFreqVals[i])*ToneFreqPos[i]/(NumClocksForSample+Clock)*65536);
-			ToneFreqPos[i]=-ToneFreqPos[i];	// Flip the flip-flop
-			do ToneFreqVals[i]+=ToneFreqs[i]; while (ToneFreqVals[i]<=0);	// ...and increment it until it gets above 0 again
+		if (ToneFreqVals[i]<=0) {	// If it gets below 0...
+			if (ToneFreqs[i]>PSG_CUTOFF) {
+				// Calculate how much of the sample is + and how much is -
+				// Go to floating point and include the clock fraction for extreme accuracy :D
+				// Store as long int, maybe it's faster? I'm not very good at this
+				IntermediatePos[i]=(long)((NumClocksForSample-Clock+2*ToneFreqVals[i])*ToneFreqPos[i]/(NumClocksForSample+Clock)*65536);
+				ToneFreqPos[i]=-ToneFreqPos[i];	// Flip the flip-flop
+			} else {
+				ToneFreqPos[i]=1;	// stuck value
+				IntermediatePos[i]=LONG_MIN;
+			};
+			ToneFreqVals[i]+=ToneFreqs[i]*(NumClocksForSample/ToneFreqs[i]+1);
 		} else IntermediatePos[i]=LONG_MIN;
 	};
 
 	// Noise channel
-	if (ToneFreqVals[3]<0) {	// If it gets below 0...
+	if (ToneFreqVals[3]<=0) {	// If it gets below 0...
 		ToneFreqPos[3]=-ToneFreqPos[3];	// Flip the flip-flop
-		if (ToneFreqs[3]>0) do ToneFreqVals[3]+=ToneFreqs[3]; while (ToneFreqVals[3]<0);	// ...and increment it until it gets above 0 again
+		if (!ToneFreqs[3]) ToneFreqs[3]=1;	// 0 state not allowed
+		ToneFreqVals[3]+=ToneFreqs[3]*(NumClocksForSample/ToneFreqs[3]+1);
 		if (ToneFreqPos[3]==1) {	// Only once per cycle...
 
 			// General method:

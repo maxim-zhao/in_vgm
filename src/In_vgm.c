@@ -2,12 +2,15 @@
 // in_vgm
 // VGM audio input plugin for Winamp
 // http://www.smspower.org/music
-// by Maxim <maxim@mwos.cjb.net> in 2001
+// by Maxim <maxim@mwos.cjb.net> in 2001 and 2002
+// with help from BlackAura in March 2002
 //-----------------------------------------------------------------
 
-#define FMPERCENT 60
+#define YM2413toPSG 0.6	// SMS/Mark III with FM pack - empirical value, real output would help
+#define YM2612toPSG 0.6	// Mega Drive/Genesis
+#define YM2151toXXX 0.5 // ???
 
-#define PLUGINNAME "VGM input plugin v0.24"
+#define PLUGINNAME "VGM input plugin v0.25"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
@@ -17,9 +20,13 @@
 #define PSGMUTE_ALLON 0xf
 // YM2413 has 14 (9 + 5 percussion), BUT it uses 1=mute, 0=on
 #define YM2413MUTE_ALLON 0
+// These two are preliminary and may change
+#define YM2612MUTE_ALLON 0
+#define YM2151MUTE_ALLON 0
 
 #include <windows.h>
 #include <stdio.h>
+#include <float.h>
 
 #include "in2.h"
 
@@ -30,6 +37,9 @@
 #include "zlib.h"
 #include "resource.h"
 #include "urlmon.h"
+
+// BlackAura - MAME FM synthesiser (aargh!)
+#include "mame_fm.h"
 
 #define ROUND(x) ((int)(x>0?x+0.5:x-0.5))
 
@@ -61,6 +71,13 @@ gzFile *InputFile;
 
 OPLL *opll;
 
+// BlackAura - FMChip flags
+#define FM_YM2413	0x01	// Bit 0 = YM2413
+#define FM_YM2612	0x02	// Bit 1 = YM2612
+#define FM_YM2151	0x04	// Bit 2 = TM2151
+
+#define USINGCHIP(chip) (FMChips&chip)
+
 struct TVGMHeader {
 	char	VGMIdent[4];	// "Vgm "
 	long	EoFOffset;		// relative offset (from this point, 0x04) of the end of file
@@ -80,8 +97,6 @@ struct TGD3Header {
 	long	Length;			// Length of string data following this point
 };
 
-//enum FileType { ftVGM,ftSSLGYM };
-
 int killDecodeThread=0;						// the kill switch for the decode thread
 HANDLE thread_handle=INVALID_HANDLE_VALUE;	// the handle to the decode thread
 
@@ -95,15 +110,18 @@ int
 	NumLoopsDone,	// how many loops we've played
 	LoopLengthInms,	// length of looped section in ms
 	LoopOffset,		// File offset of looped data start
-	PSGClock=1,		// SN76489 clock rate
-	FMClock=1,		// YM2413 (and other) clock rate
+	PSGClock=0,		// SN76489 clock rate
+	FMClock=0,		// YM2413 (and other) clock rate
+	FMChips=0,		// BlackAura - FM Chips enabled
 	SeekToSampleNumber,	// For seeking
 	FileInfoJapanese,	// Whether to show Japanese in the info dialogue
 	UseMB,			// Whether to open HTML in the MB
 	AutoMB,			// Whether to automatically show HTML in MB
 	ForceMBOpen;	// Whether to force the MB to open if closed when doing AutoMB
 long int 
-	FMChannels=YM2413MUTE_ALLON;		// backup when stopped. PSG does it itself.
+	YM2413Channels=YM2413MUTE_ALLON,	// backup when stopped. PSG does it itself.
+	YM2612Channels=YM2612MUTE_ALLON,
+	YM2151Channels=YM2151MUTE_ALLON;
 char
 	TrackTitleFormat[100],			// Track title formatting
 	CurrentURLFilename[MAX_PATH],	// Filename current URL has been saved to
@@ -281,17 +299,29 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				EnableWindow(GetDlgItem(DlgWin,lblPSGPerc),FALSE);
 				EnableWindow(GetDlgItem(DlgWin,gbPSG),FALSE);
 			};
-			if (FMClock) { // Check FM channel checkboxes
-				for (i=0;i<15;i++) CheckDlgButton(DlgWin,cbFM1+i,!((FMChannels & (1<<i))>0));
-				CheckDlgButton(DlgWin,cbFMToneAll,((FMChannels&0x1ff )==0));
-				CheckDlgButton(DlgWin,cbFMPercAll,((FMChannels&0x3e00)==0));
+			if USINGCHIP(FM_YM2413) {	// Check YM2413 FM channel checkboxes
+				for (i=0;i<15;i++) CheckDlgButton(DlgWin,cbYM24131+i,!((YM2413Channels & (1<<i))>0));
+				CheckDlgButton(DlgWin,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
+				CheckDlgButton(DlgWin,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
 			} else {
-				for (i=0;i<15;i++) EnableWindow(GetDlgItem(DlgWin,cbFM1+i),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,cbFMToneAll),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,cbFMPercAll),FALSE);
+				for (i=0;i<15;i++) EnableWindow(GetDlgItem(DlgWin,cbYM24131+i),FALSE);
+				EnableWindow(GetDlgItem(DlgWin,cbYM2413ToneAll),FALSE);
+				EnableWindow(GetDlgItem(DlgWin,cbYM2413PercAll),FALSE);
 				EnableWindow(GetDlgItem(DlgWin,lblExtraTone),FALSE);
 				EnableWindow(GetDlgItem(DlgWin,lblExtraToneNote),FALSE);
 				EnableWindow(GetDlgItem(DlgWin,gbYM2413),FALSE);
+			};
+			if USINGCHIP(FM_YM2612) {	// Check YM2612 FM channel checkboxes
+				CheckDlgButton(DlgWin,cbYM2612All,(YM2612Channels==0));
+			} else {
+				EnableWindow(GetDlgItem(DlgWin,cbYM2612All),FALSE);
+				EnableWindow(GetDlgItem(DlgWin,gbYM2612),FALSE);
+			};
+			if USINGCHIP(FM_YM2151) {	// Check YM2151 FM channel checkboxes
+				CheckDlgButton(DlgWin,cbYM2151All,(YM2151Channels==0));
+			} else {
+				EnableWindow(GetDlgItem(DlgWin,cbYM2151All),FALSE);
+				EnableWindow(GetDlgItem(DlgWin,gbYM2151),FALSE);
 			};
 			// Set loop count
 			SetDlgItemInt(DlgWin,ebLoopCount,NumLoops,TRUE);
@@ -369,30 +399,30 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					EnableWindow(GetDlgItem(DlgWin,ebPlaybackRate),((LOWORD(wParam)==rbRateOther)?TRUE:FALSE));
 					if (LOWORD(wParam)==rbRateOther) SetFocus(GetDlgItem(DlgWin,ebPlaybackRate));
 					break;
-				case cbFM1:		case cbFM2:		case cbFM3:		case cbFM4:
-				case cbFM5:		case cbFM6:		case cbFM7:		case cbFM8:
-				case cbFM9:		case cbFM10:	case cbFM11:	case cbFM12:
-				case cbFM13:	case cbFM14: {
+				case cbYM24131:		case cbYM24132:		case cbYM24133:		case cbYM24134:
+				case cbYM24135:		case cbYM24136:		case cbYM24137:		case cbYM24138:
+				case cbYM24139:		case cbYM241310:	case cbYM241311:	case cbYM241312:
+				case cbYM241313:	case cbYM241314: {
 					int i;
-					FMChannels=0;
-					for (i=0;i<15;i++) FMChannels|=(!IsDlgButtonChecked(DlgWin,cbFM1+i))<<i;
-					OPLL_setMask(opll,FMChannels);
-					CheckDlgButton(DlgWin,cbFMToneAll,((FMChannels&0x1ff )==0));
-					CheckDlgButton(DlgWin,cbFMPercAll,((FMChannels&0x3e00)==0));
+					YM2413Channels=0;
+					for (i=0;i<15;i++) YM2413Channels|=(!IsDlgButtonChecked(DlgWin,cbYM24131+i))<<i;
+					if USINGCHIP(FM_YM2413) OPLL_setMask(opll,YM2413Channels);
+					CheckDlgButton(DlgWin,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
+					CheckDlgButton(DlgWin,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
 					break;
 				};
-				case cbFMToneAll: {
+				case cbYM2413ToneAll: {
 					int i;
-					const int Checked=IsDlgButtonChecked(DlgWin,cbFMToneAll);
-					for (i=0;i<9;i++) CheckDlgButton(DlgWin,cbFM1+i,Checked);
-					PostMessage(DlgWin,WM_COMMAND,cbFM1,0);
+					const int Checked=IsDlgButtonChecked(DlgWin,cbYM2413ToneAll);
+					for (i=0;i<9;i++) CheckDlgButton(DlgWin,cbYM24131+i,Checked);
+					PostMessage(DlgWin,WM_COMMAND,cbYM24131,0);
 					break;
 				};
-				case cbFMPercAll: {
+				case cbYM2413PercAll: {
 					int i;
-					const int Checked=IsDlgButtonChecked(DlgWin,cbFMPercAll);
-					for (i=0;i<5;i++) CheckDlgButton(DlgWin,cbFM10+i,Checked);
-					PostMessage(DlgWin,WM_COMMAND,cbFM1,0);
+					const int Checked=IsDlgButtonChecked(DlgWin,cbYM2413PercAll);
+					for (i=0;i<5;i++) CheckDlgButton(DlgWin,cbYM241310+i,Checked);
+					PostMessage(DlgWin,WM_COMMAND,cbYM24131,0);
 					break;
 				};
 				case cbPSGToneAll: {
@@ -414,6 +444,14 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				case cbForceMBOpen:
 					ForceMBOpen=IsDlgButtonChecked(DlgWin,cbForceMBOpen);
 					break;
+				case cbYM2612All: {
+					YM2612Channels=!IsDlgButtonChecked(DlgWin,cbYM2612All);
+					break;
+				};
+				case cbYM2151All: {
+					YM2151Channels=!IsDlgButtonChecked(DlgWin,cbYM2151All);
+					break;
+				};
 
             };
             break ;
@@ -593,7 +631,9 @@ int play(char *fn)
 	if ((*lastfn) && (strcmp(fn,lastfn)!=0)) {
 		// If file has changed, reset channel muting
 		PSGMute=PSGMUTE_ALLON;
-		FMChannels=YM2413MUTE_ALLON;
+		YM2413Channels=YM2413MUTE_ALLON;
+		YM2612Channels=YM2612MUTE_ALLON;
+		YM2151Channels=YM2151MUTE_ALLON;
 	};
 
 	strcpy(lastfn,fn);
@@ -667,6 +707,9 @@ int play(char *fn)
 	PSGClock=VGMHeader.PSGClock;
 	FMClock=VGMHeader.FMClock;
 
+	// BlackAura - Disable all FM chips
+	FMChips=0;
+
 	// Get rate
 	FileRate=VGMHeader.RecordingRate;
 
@@ -700,16 +743,9 @@ int play(char *fn)
 
     gzseek(InputFile,0x40,SEEK_SET);
 
-	if (FMClock) {
-		// Start up the YM2413
-		OPLL_init(FMClock,SAMPLERATE);
-		opll = OPLL_new();
-		OPLL_reset(opll);
-		OPLL_reset_patch(opll,0);
-		OPLL_setMask(opll,FMChannels);
-	};
+	// FM Chip startups are done whenever a chip is used for the first time
 
-	// Start up SN76489
+	// Start up SN76489 (if used)
 	if (PSGClock) SN76489_Init(PSGClock,SAMPLERATE);
 
 	// Reset some stuff
@@ -773,11 +809,18 @@ void stop() {
 	mod.SAVSADeInit();	// Deinit vis
 
 	// Stop YM2413
-	if (FMClock) {
+	if USINGCHIP(FM_YM2413) {
 		OPLL_delete(opll);
 		OPLL_close();
-	};
+	}
 
+	// Stop YM2612
+	if USINGCHIP(FM_YM2413) YM2612Shutdown();
+
+	// Stop YM2151
+#ifdef HAS_YM2151
+	if USINGCHIP(FM_YM2151) OPMShutdown();
+#endif
 	// Stop SN76489
 	// not needed
 };
@@ -801,11 +844,21 @@ int getoutputtime() {
 //-----------------------------------------------------------------
 void setoutputtime(int time_in_ms) {
 	int IntroLengthInms=TrackLengthInms-LoopLengthInms;
-	long int FMChannels;
+	long int YM2413Channels;
 
 	if (InputFile==NULL) return;
 
 	mod.outMod->Pause(1);
+
+	if USINGCHIP(FM_YM2413) {	// If using YM2413, reset it
+		YM2413Channels=OPLL_toggleMask(opll,0);
+		OPLL_reset(opll);
+		OPLL_setMask(opll,YM2413Channels);
+	};
+
+	if USINGCHIP(FM_YM2612) {
+		YM2612ResetChip(0);
+	};
 
 	if ((LoopLengthInms>0) &&	// file is looped
 		(time_in_ms>IntroLengthInms)) {	// seek is past loop point
@@ -821,10 +874,6 @@ void setoutputtime(int time_in_ms) {
 	if (!paused) mod.outMod->Pause(0);
 
 	mod.outMod->Flush(time_in_ms);
-
-	FMChannels=OPLL_toggleMask(opll,0);
-	OPLL_reset(opll);
-	OPLL_setMask(opll,FMChannels);
 }
 
 //-----------------------------------------------------------------
@@ -1213,7 +1262,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			int samplesinbuffer=SampleBufferSize/NCH;
 			int x;
 
-			int b1,b2;
+			unsigned char b1,b2;
 
 			for (x=0;x<samplesinbuffer/2;++x) {
 				// Read file, write stuff
@@ -1227,17 +1276,67 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						b1=ReadByte();
 						if (PSGClock) SN76489_Write((char)b1);
 						break;
-					case 0x51:	// YM24123 write
+					case 0x51:	// YM2413 write
 						b1=ReadByte();
 						b2=ReadByte();
-						if (FMClock) OPLL_writeReg(opll,b1,b2);
+						if (FMClock) {
+							if (!USINGCHIP(FM_YM2413)) {	// BlackAura - If YM2413 emu not started, start it
+								// Start the emulator up
+								OPLL_init(FMClock,SAMPLERATE);
+								opll=OPLL_new();
+								OPLL_reset(opll);
+								OPLL_reset_patch(opll,0);
+								OPLL_setMask(opll,YM2413Channels);
+								// Set the flag for it
+								FMChips|=FM_YM2413;
+							};
+							OPLL_writeReg(opll,b1,b2);	// Write to the chip
+						}
 						break;
-					case 0x52:	// Reserved/unsupported
-					case 0x53:	// chips
-					case 0x54:	// (fall through)
-					case 0x55:	//  |
-					case 0x56:	//  |
-					case 0x57:	//  |
+					case 0x52:	// YM2612 write (port 1)
+						b1=ReadByte();
+						b2=ReadByte();
+						if (FMClock) {
+							if (!USINGCHIP(FM_YM2612)) {
+								YM2612Init(1,FMClock,SAMPLERATE,NULL,NULL);
+								FMChips|=FM_YM2612;
+							};
+							YM2612Write(0,0,b1);
+							YM2612Write(0,1,b2);
+						}
+						break;
+					case 0x53:	// YM2612 write (port 2)
+						b1=ReadByte();
+						b2=ReadByte();
+						if (FMClock) {
+							if (!USINGCHIP(FM_YM2612)) {
+								YM2612Init(1,FMClock,SAMPLERATE,NULL,NULL);
+								FMChips|=FM_YM2612;
+							};
+							YM2612Write(0,2,b1);
+							YM2612Write(0,3,b2);
+						};
+						break;
+					case 0x54:	// BlackAura - YM2151 write
+						// Not here yet so fall through
+						b1=ReadByte();
+						b2=ReadByte();
+						if (FMClock) {
+							if (!USINGCHIP(FM_YM2151)) {
+#ifdef HAS_YM2151
+								OPMInit(1,FMClock,SAMPLERATE,NULL,NULL);
+#endif
+								FMChips|=FM_YM2151;
+							};
+#ifdef HAS_YM2151
+							YM2151Write(0,0,b1);
+							YM2151Write(0,1,b2);
+#endif
+						};
+						break;
+					case 0x55:	// Reserved/unsupported
+					case 0x56:	// chips
+					case 0x57:	// (fall through)
 					case 0x58:	//  |
 					case 0x59:	//  |
 					case 0x5a:	//  |
@@ -1296,26 +1395,84 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				#if NCH == 2
 				// Stereo
 				// PSG
-				if (PSGClock) SN76489_GetValues(&l,&r);
+				if (PSGClock) SN76489_GetValues(&l,&r); else l=r=0;	// Modification by BlackAura
 
-				// YM2413
 				if (FMClock) {
-					int FMVal=OPLL_calc(opll);
+					// YM2413
+					if USINGCHIP(FM_YM2413) {	// Modification by BlackAura
+						int FMVal=OPLL_calc(opll);
 
-					if (PSGClock) {
-						l=(FMVal*FMPERCENT+l*(100-FMPERCENT))/100;
-						r=(FMVal*FMPERCENT+r*(100-FMPERCENT))/100;
-					} else {
-						l=FMVal;
-						r=FMVal;
+						if (PSGClock) {
+							// If PSG then mix it
+							FMVal=(int)(YM2413toPSG*FMVal);
+							l=FMVal+(int)(l*(1-YM2413toPSG));
+							r=FMVal+(int)(r*(1-YM2413toPSG));
+						} else {
+							// else keep full volume
+							l=FMVal;
+							r=FMVal;
+						};
 					};
+
+					// YM2612
+					if USINGCHIP(FM_YM2612) {
+						signed short *mameBuffer[2];
+						signed short mameLeft;
+						signed short mameRight;
+						double MixAmount=DBL_MIN;	// Add different mixing for different chip combinations? maybe
+						if (PSGClock) MixAmount=YM2612toPSG;
+
+						// Get values
+						mameBuffer[0]=&mameLeft;
+						mameBuffer[1]=&mameRight;
+						if (YM2612Channels==0)
+							YM2612UpdateOne(0,mameBuffer,1);
+						else
+							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
+
+						if (MixAmount!=DBL_MIN) {	// Mix
+							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
+							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
+						} else {	// No mixing
+							l=mameLeft ;
+							r=mameRight;
+						};
+					};
+
+					// YM2151
+					if USINGCHIP(FM_YM2151) {
+						signed short *mameBuffer[2];
+						signed short mameLeft;
+						signed short mameRight;
+						double MixAmount=DBL_MIN;	// Add different mixing for different chip combinations? maybe
+						if (PSGClock) MixAmount=YM2151toXXX;
+
+						// Get values
+						mameBuffer[0]=&mameLeft;
+						mameBuffer[1]=&mameRight;
+#ifdef HAS_YM2151
+						if (YM2151Channels==0)
+							OPMUpdateOne(0,mameBuffer,1);
+						else
+#endif
+							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
+
+						if (MixAmount!=DBL_MIN) {	// Mix
+							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
+							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
+						} else {	// No mixing
+							l=mameLeft ;
+							r=mameRight;
+						};
+					};
+
 				};
+
 				SampleBuffer[2*x]  =l;
 				SampleBuffer[2*x+1]=r;
 
 				#else
-				// Mono - not yet working
-				if (FMClock) SampleBuffer[x]=OPLL_calc(opll);
+				// Mono - not working
 				#endif
 
 				--SamplesTillNextRead;

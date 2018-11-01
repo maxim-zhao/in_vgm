@@ -82,95 +82,103 @@ BEGIN
     PUSHBUTTON      "View GD3 in &browser",btnUnicodeText,62,95,85,14
 END
 
-CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 229, 213
+CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 231, 233
 STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "VGM plugin configuration"
 FONT 8, "Verdana"
 BEGIN
-    DEFPUSHBUTTON   "&OK",IDOK,175,197,52,14
+    DEFPUSHBUTTON   "&OK",IDOK,177,217,52,14
     GROUPBOX        "Looping",IDC_STATIC,2,0,131,25
-    LTEXT           "&Repeat looped section",IDC_STATIC,6,11,73,8,NOT 
-                    WS_GROUP
+    LTEXT           "&Repeat looped section",IDC_STATIC,6,9,73,12,
+                    SS_CENTERIMAGE | NOT WS_GROUP
     EDITTEXT        ebLoopCount,80,9,27,12,ES_NUMBER
-    LTEXT           "times",IDC_STATIC,109,11,21,8,NOT WS_GROUP
-    GROUPBOX        "Channel muting",IDC_STATIC,2,27,131,140
-    CTEXT           "Note: only affects the current track; output buffer makes it non-immediate.",
-                    IDC_STATIC,4,38,126,17,NOT WS_GROUP
-    GROUPBOX        "PSG",gbPSG,6,56,123,33
-    CONTROL         "&Tone channels:",cbPSGToneAll,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,66,61,8
-    CONTROL         "1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,76,
-                    16,8
-    CONTROL         "2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,76,
-                    16,8
-    CONTROL         "3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,76,
-                    16,8
-    LTEXT           "&Percussion:",lblPSGPerc,75,66,39,8,SS_CENTERIMAGE
-    CONTROL         "Noise",cbTone4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
-                    76,38,8
-    GROUPBOX        "YM2413",gbYM2413,6,90,123,73
-    CONTROL         "To&ne channels:",cbFMToneAll,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,101,61,8
-    CONTROL         "1",cbFM1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,111,
-                    16,8
-    CONTROL         "2",cbFM2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,111,
-                    16,8
-    CONTROL         "3",cbFM3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,111,
-                    16,8
-    CONTROL         "4",cbFM4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,121,
-                    16,8
-    CONTROL         "5",cbFM5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,121,
-                    16,8
-    CONTROL         "6",cbFM6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,121,
-                    16,8
-    LTEXT           "Extra tone chs:",lblExtraTone,11,131,51,8,
-                    SS_CENTERIMAGE
-    CONTROL         "7",cbFM7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,141,
-                    16,8
-    CONTROL         "8",cbFM8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,141,
-                    16,8
-    CONTROL         "9",cbFM9,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,141,
-                    16,8
-    LTEXT           "(if no percussion)",lblExtraToneNote,11,151,58,8,
-                    SS_CENTERIMAGE
-    CONTROL         "Per&cussion:",cbFMPercAll,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,101,50,8
-    CONTROL         "Hi-hat",cbFM10,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
-                    111,33,8
-    CONTROL         "Cymbal",cbFM11,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
-                    121,36,8
-    CONTROL         "Tom-tom",cbFM12,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    75,131,46,8
-    CONTROL         "Snare drum",cbFM13,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,141,51,8
-    CONTROL         "Bass drum",cbFM14,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    75,151,51,8
-    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,169,131,42
-    CONTROL         "Use &MiniBrowser to display HTML",cbUseMB,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,179,122,8
-    CONTROL         "Auto-display &GD3 in MB/browser",cbAutoMB,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,189,122,8
-    GROUPBOX        "Playback rate",IDC_STATIC,136,0,91,74
-    CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
-                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,141,12,62,8
-    CONTROL         "&50Hz",rbRate50,"Button",BS_AUTORADIOBUTTON | 
-                    WS_TABSTOP,141,22,32,8
-    CONTROL         "&60Hz",rbRate60,"Button",BS_AUTORADIOBUTTON | 
-                    WS_TABSTOP,141,32,32,8
-    CONTROL         "Ot&her:",rbRateOther,"Button",BS_AUTORADIOBUTTON | 
-                    WS_TABSTOP,141,42,37,8
-    EDITTEXT        ebPlaybackRate,178,40,22,12,ES_AUTOHSCROLL | ES_NUMBER | 
+    LTEXT           "times",IDC_STATIC,109,9,21,12,SS_CENTERIMAGE | NOT 
                     WS_GROUP
-    LTEXT           "Hz",IDC_STATIC,202,42,9,10,NOT WS_GROUP
+    GROUPBOX        "Channel muting",IDC_STATIC,2,27,131,161
+    CTEXT           "Note: only affects the current track; output buffer makes it non-immediate.",
+                    IDC_STATIC,4,37,126,17,NOT WS_GROUP
+    GROUPBOX        "PSG",gbPSG,6,54,123,33
+    CONTROL         "&Tone channels:",cbPSGToneAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,64,64,10
+    CONTROL         "1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,74,
+                    20,10
+    CONTROL         "2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,74,
+                    20,10
+    CONTROL         "3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,74,
+                    21,10
+    LTEXT           "&Percussion:",lblPSGPerc,75,64,52,10,SS_CENTERIMAGE
+    CONTROL         "Noise",cbTone4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
+                    74,52,10
+    GROUPBOX        "YM2413",gbYM2413,6,88,123,73
+    CONTROL         "To&ne channels:",cbYM2413ToneAll,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,98,63,10
+    CONTROL         "1",cbYM24131,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
+                    108,20,10
+    CONTROL         "2",cbYM24132,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,
+                    108,20,10
+    CONTROL         "3",cbYM24133,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,
+                    108,21,10
+    CONTROL         "4",cbYM24134,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
+                    118,20,10
+    CONTROL         "5",cbYM24135,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,
+                    118,20,10
+    CONTROL         "6",cbYM24136,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,
+                    118,21,10
+    LTEXT           "Extra tone chs:",lblExtraTone,11,128,63,10,
+                    SS_CENTERIMAGE
+    CONTROL         "7",cbYM24137,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
+                    138,20,10
+    CONTROL         "8",cbYM24138,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,
+                    138,20,10
+    CONTROL         "9",cbYM24139,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,
+                    138,21,10
+    LTEXT           "(if no percussion)",lblExtraToneNote,11,148,63,10,
+                    SS_CENTERIMAGE
+    CONTROL         "Per&cussion:",cbYM2413PercAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,98,52,10
+    CONTROL         "Hi-hat",cbYM241310,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,108,52,10
+    CONTROL         "Cymbal",cbYM241311,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,118,52,10
+    CONTROL         "Tom-tom",cbYM241312,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,128,52,10
+    CONTROL         "Snare drum",cbYM241313,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,138,52,10
+    CONTROL         "Bass drum",cbYM241314,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,148,52,10
+    GROUPBOX        "YM2612",gbYM2612,6,161,60,22
+    CONTROL         "All channels",cbYM2612All,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,170,52,10
+    GROUPBOX        "YM2151",gbYM2151,69,161,60,22
+    CONTROL         "All channels",cbYM2151All,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,170,52,10
+    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,189,131,42
+    CONTROL         "Use &MiniBrowser to display HTML",cbUseMB,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,199,122,10
+    CONTROL         "Auto-display &GD3 in MB/browser",cbAutoMB,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,209,122,10
+    CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,219,122,10
+    GROUPBOX        "Playback rate",IDC_STATIC,136,0,93,74
+    CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,141,12,62,10
+    CONTROL         "&50Hz",rbRate50,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,141,22,32,10
+    CONTROL         "&60Hz",rbRate60,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,141,32,32,10
+    CONTROL         "Ot&her:",rbRateOther,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,141,42,37,10
+    EDITTEXT        ebPlaybackRate,178,41,22,12,ES_AUTOHSCROLL | ES_NUMBER | 
+                    WS_GROUP
+    LTEXT           "Hz",IDC_STATIC,202,41,9,12,SS_CENTERIMAGE | NOT 
+                    WS_GROUP
     CTEXT           "Note: takes effect on the next track start",IDC_STATIC,
-                    141,53,80,18,NOT WS_GROUP
-    GROUPBOX        "Track title &display",IDC_STATIC,136,75,91,92
+                    141,55,80,16,NOT WS_GROUP
+    GROUPBOX        "Track title &display",IDC_STATIC,136,75,93,92
     EDITTEXT        ebTrackTitle,141,86,81,12,ES_AUTOHSCROLL
     LTEXT           "%t = Track title*\n%a = Track author*\n%g = Game name*\n%d = Game release date\n%s = System name*\n%c = File creator\n* use %?j for\n   Japanese text",
                     IDC_STATIC,141,99,83,64,NOT WS_GROUP
-    ICON            "MAINICON",IDC_STATIC,141,191,18,20
-    CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,199,122,8
+    ICON            "MAINICON",IDC_STATIC,141,211,20,20
 END
 
 
@@ -205,14 +213,16 @@ BEGIN
     "CONFIGDIALOGUE", DIALOG
     BEGIN
         LEFTMARGIN, 2
-        RIGHTMARGIN, 227
+        RIGHTMARGIN, 229
         VERTGUIDE, 6
         VERTGUIDE, 11
+        VERTGUIDE, 32
+        VERTGUIDE, 53
         VERTGUIDE, 75
         VERTGUIDE, 133
         VERTGUIDE, 136
         VERTGUIDE, 141
-        BOTTOMMARGIN, 211
+        BOTTOMMARGIN, 231
     END
 END
 #endif    // APSTUDIO_INVOKED

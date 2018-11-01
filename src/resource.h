@@ -28,35 +28,39 @@
 #define ebVersion                       212
 #define rbPSG                           213
 #define rbFM                            214
-#define cbFM1                           301
-#define cbFM2                           302
-#define cbFM3                           303
-#define cbFM4                           304
-#define cbFM5                           305
-#define cbFM6                           306
-#define cbFM7                           307
-#define cbFM8                           308
-#define cbFM9                           309
-#define cbFM10                          310
-#define cbFM11                          311
-#define cbFM12                          312
-#define cbFM13                          313
-#define cbFM14                          314
+#define cbYM24131                       301
+#define cbYM24132                       302
+#define cbYM24133                       303
+#define cbYM24134                       304
+#define cbYM24135                       305
+#define cbYM24136                       306
+#define cbYM24137                       307
+#define cbYM24138                       308
+#define cbYM24139                       309
+#define cbYM241310                      310
+#define cbYM241311                      311
+#define cbYM241312                      312
+#define cbYM241313                      313
+#define cbYM241314                      314
 #define lblExtraTone                    350
 #define lblExtraToneNote                351
 #define ebSize                          1016
 #define ebLength                        1017
 #define cbPSGToneAll                    1025
-#define cbFMPercAll                     1026
+#define cbYM2413PercAll                 1026
 #define lblPSGPerc                      1027
 #define gbPSG                           1028
 #define gbYM2413                        1029
-#define cbFMToneAll                     1030
+#define cbYM2413ToneAll                 1030
 #define btnUnicodeText                  1030
 #define cbUseMB                         1032
 #define cbAutoMB                        1033
 #define cbForceMBOpen                   1035
 #define cbPSGOverSample                 1036
+#define gbYM2612                        1037
+#define cbYM2612All                     1038
+#define gbYM2151                        1039
+#define cbYM2151All                     1040
 
 // Next default values for new objects
 // 
@@ -66,7 +70,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        104
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1037
+#define _APS_NEXT_CONTROL_VALUE         1039
 #define _APS_NEXT_SYMED_VALUE           111
 #endif
 #endif

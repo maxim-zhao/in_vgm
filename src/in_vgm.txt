@@ -65,11 +65,16 @@ I tried a DSP plugin, "Dee". It crashes Winamp whenever you turn on the 3D thing
 
 I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is quite cool.
 
-It sometimes crashes when seeking. I don't know why.
-
 
 History:
 ========
+
+0.25 8/4/02
+===========
+
++ Fixed PSG 2-byte noise write behaviour based on chip tests
++ Added MAME 0.36 YM2612 core thanks to BlackAura
++ Finally fixed the seek bug
 
 0.24 25/3/02
 ============
