@@ -3,12 +3,15 @@ in_vgm source files
 
 Made with VC7. Please let me know if I've missed out any files.
 Uses ZLib (not included), EMU2413 (included), a modified version
-of some MAME FM cores (included) and Gens' YM2612 core (included).
+of some MAME FM cores (included), Gens' YM2612 core (included),
+Winamp SDK (not included), LZMA SDK (not included), SQLite 
+(not included).
 
 Many thanks to BlackAura for getting the MAME stuff working.
 
-Please note that I am not vastly experienced in C, so there may well be
-some stupid stuff in this source.
+Please note that I was not vastly experienced in C when I wrote 
+most of this, so there may well be some stupid stuff in this 
+source.
 
 You are allowed to do what you like with it just so long as:
 

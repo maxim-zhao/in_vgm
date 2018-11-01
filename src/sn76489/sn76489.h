@@ -18,7 +18,7 @@
 #endif
 
 
-#define MAX_SN76489     4
+/*#define MAX_SN76489     4*/
 
 /*
     More testing is needed to find and confirm feedback patterns for
@@ -52,7 +52,6 @@ enum mute_values {
 typedef struct
 {
     int Mute; // per-channel muting
-    int VolumeArray;
     int BoostNoise; // double noise volume when non-zero
     
     /* Variables */
@@ -75,33 +74,34 @@ typedef struct
     int Channels[4];          /* Value of each channel, before stereo is applied */
     float IntermediatePos[4];   /* intermediate values used at boundaries between + and - (does not need double accuracy)*/
 
-    int panning[4];            /* fake stereo - 0..127..254 */
+    float panning[4][2];            /* fake stereo */
 
 } SN76489_Context;
 
 /* Function prototypes */
-void SN76489_Init(int which, int PSGClockValue, int SamplingRate);
-void SN76489_Reset(int which);
-void SN76489_Shutdown(void);
-void SN76489_Config(int which, int mute, int volume, int feedback, int sw_width, int boost_noise);
-void SN76489_SetContext(int which, uint8 *data);
-void SN76489_GetContext(int which, uint8 *data);
-uint8 *SN76489_GetContextPtr(int which);
-int SN76489_GetContextSize(void);
-void SN76489_Write(int which, int data);
-void SN76489_GGStereoWrite(int which, int data);
-void SN76489_Update(int which, INT16 **buffer, int length);
+SN76489_Context* SN76489_Init(int PSGClockValue, int SamplingRate);
+void SN76489_Reset(SN76489_Context* chip);
+void SN76489_Shutdown(SN76489_Context* chip);
+void SN76489_Config(SN76489_Context* chip, int mute, int feedback, int sw_width, int boost_noise);
+/*
+void SN76489_SetContext(SN76489_Context* chip, uint8 *data);
+void SN76489_GetContext(SN76489_Context* chip, uint8 *data);
+uint8 *SN76489_GetContextPtr(int chip);
+int SN76489_GetContextSize(void);*/
+void SN76489_Write(SN76489_Context* chip, int data);
+void SN76489_GGStereoWrite(SN76489_Context* chip, int data);
+void SN76489_Update(SN76489_Context* chip, INT16 **buffer, int length);
 
 /* Non-standard getters and setters */
-int  SN76489_GetMute(int which);
-void SN76489_SetMute(int which, int val);
-int  SN76489_GetVolType(int which);
-void SN76489_SetVolType(int which, int val);
+int  SN76489_GetMute(SN76489_Context* chip);
+void SN76489_SetMute(SN76489_Context* chip, int val);
+int  SN76489_GetVolType(SN76489_Context* chip);
+void SN76489_SetVolType(SN76489_Context* chip, int val);
 
-void SN76489_SetPanning(int which, int ch0, int ch1, int ch2, int ch3);
+void SN76489_SetPanning(SN76489_Context* chip, int ch0, int ch1, int ch2, int ch3);
 
 /* and a non-standard data getter */
-void SN76489_UpdateOne(int which, int *l, int *r);
+void SN76489_UpdateOne(SN76489_Context* chip, int *l, int *r);
 
 #endif /* _SN76489_H_ */
 

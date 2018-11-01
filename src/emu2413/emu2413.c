@@ -45,11 +45,18 @@
     YM2143 data sheet
 
 **************************************************************************************/
+
+/**
+ *  Additions by Maxim:
+ *  - per-channel panning
+ *
+ **/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include "emu2413.h"
+#include "../panning.h" // Maxim
 
 #ifdef EMU2413_COMPACTION
 #define OPLL_TONE_NUM 1
@@ -1050,8 +1057,8 @@ OPLL_reset (OPLL * opll)
   opll->realstep = (e_uint32) ((1 << 31) / rate);
   opll->opllstep = (e_uint32) ((1 << 31) / (clk / 72));
   opll->oplltime = 0;
-  for (i = 0; i < 14; i++)
-    opll->pan[i] = 127; /* Maxim: pan is 0..255 */
+  for (i = 0; i < 16; i++)
+		centre_panning( opll->pan[i] );
   opll->sprev[0] = opll->sprev[1] = 0;
   opll->snext[0] = opll->snext[1] = 0;
 #endif
@@ -1760,13 +1767,13 @@ OPLL_writeIO (OPLL * opll, e_uint32 adr, e_uint32 val)
 void
 OPLL_set_pan (OPLL * opll, e_uint32 ch, e_uint32 pan)
 {
-  opll->pan[ch & 15] = pan & 255; /* Maxim: pan is 0..255 */
+	calc_panning( opll->pan[ch & 15], pan ); // Maxim
 }
 
 static void
 calc_stereo (OPLL * opll, e_int32 out[2])
 {
-  /* Maxim: changed panning to be 0..255, 127 is centre */
+	/* Maxim: added stereo control (multiply each side by a float in opll->pan[ch][side]) */
   e_int32 l=0,r=0;
 /*  e_int32 b[4] = { 0, 0, 0, 0 };        /* Ignore, Right, Left, Center */
 /*  e_int32 r[4] = { 0, 0, 0, 0 };        /* Ignore, Right, Left, Center */
@@ -1786,15 +1793,15 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_CH (i)) && (CAR(opll,i)->eg_mode != FINISH))
     {
       channel = calc_slot_car (CAR(opll,i), calc_slot_mod (MOD(opll,i)));
-      if ( opll->pan[i] == 127 )
+      if ( opll->pan[i][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[i]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[i]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[i][0] );
+        r += (e_int32)( channel * opll->pan[i][1] );
       }
     }
 
@@ -1804,15 +1811,15 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_CH (6)) && (CAR(opll,6)->eg_mode != FINISH))
     {
       channel = calc_slot_car (CAR(opll,6), calc_slot_mod (MOD(opll,6)));
-      if ( opll->pan[6] == 127 )
+      if ( opll->pan[6][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[6]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[6]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[6][0] );
+        r += (e_int32)( channel * opll->pan[6][1] );
       }
 
     }
@@ -1822,15 +1829,15 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_BD) && (CAR(opll,6)->eg_mode != FINISH))
     {
       channel = calc_slot_car (CAR(opll,6), calc_slot_mod (MOD(opll,6)));
-      if ( opll->pan[9] == 127 )
+      if ( opll->pan[9][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[9]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[9]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[9][0] );
+        r += (e_int32)( channel * opll->pan[9][1] );
       }
     }
   }
@@ -1840,15 +1847,15 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_CH (7)) && (CAR (opll,7)->eg_mode != FINISH))
     {
       channel = calc_slot_car (CAR (opll,7), calc_slot_mod (MOD (opll,7)));
-      if ( opll->pan[7] == 127 )
+      if ( opll->pan[7][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[7]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[7]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[7][0] );
+        r += (e_int32)( channel * opll->pan[7][1] );
       }
     }
   }
@@ -1857,29 +1864,29 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_HH) && (MOD (opll,7)->eg_mode != FINISH))
     {
       channel = calc_slot_hat (MOD (opll,7), CAR(opll,8)->pgout, opll->noise_seed&1);
-      if ( opll->pan[10] == 127 )
+      if ( opll->pan[10][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[10]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[10]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[10][0] );
+        r += (e_int32)( channel * opll->pan[10][1] );
       }
     }
     if (!(opll->mask & OPLL_MASK_SD) && (CAR (opll,7)->eg_mode != FINISH))
     {
       channel = -calc_slot_snare (CAR (opll,7), opll->noise_seed&1); // this one is negated
-      if ( opll->pan[11] == 127 )
+      if ( opll->pan[11][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[11]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[11]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[11][0] );
+        r += (e_int32)( channel * opll->pan[11][1] );
       }
     }
   }
@@ -1889,15 +1896,15 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_CH (8)) && (CAR (opll,8)->eg_mode != FINISH))
     {
       channel = calc_slot_car (CAR (opll,8), calc_slot_mod (MOD (opll,8)));
-      if ( opll->pan[8] == 127 )
+      if ( opll->pan[8][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[8]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[8]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[8][0] );
+        r += (e_int32)( channel * opll->pan[8][1] );
       }
     }
   }
@@ -1906,29 +1913,29 @@ calc_stereo (OPLL * opll, e_int32 out[2])
     if (!(opll->mask & OPLL_MASK_TOM) && (MOD (opll,8)->eg_mode != FINISH))
     {
       channel = calc_slot_tom (MOD (opll,8));
-      if ( opll->pan[12] == 127 )
+      if ( opll->pan[12][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[12]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[12]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[12][0] );
+        r += (e_int32)( channel * opll->pan[12][1] );
       }
     }
     if (!(opll->mask & OPLL_MASK_CYM) && (CAR (opll,8)->eg_mode != FINISH))
     {
       channel = -calc_slot_cym (CAR (opll,8), MOD(opll,7)->pgout); // negated
-      if ( opll->pan[13] == 127 )
+      if ( opll->pan[13][0] == 1.0f )
       {
         l += channel;
         r += channel;
       }
       else
       {
-        l += channel * (255-opll->pan[13]) / 127; // 0 -> 2, 127 -> 1, 255 -> 0 (nearly)
-        r += channel * (    opll->pan[13]) / 127; // 255 -> 2, 127 -> 1, 0 -> 0 (nearly)
+        l += (e_int32)( channel * opll->pan[13][0] );
+        r += (e_int32)( channel * opll->pan[13][1] );
       }
     }
   }

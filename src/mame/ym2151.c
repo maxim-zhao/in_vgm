@@ -9,7 +9,7 @@
 #include <string.h>
 #include <math.h>
 
-#include "mame_ym2151.h"
+#include "ym2151.h"
 
 #define logerror
 

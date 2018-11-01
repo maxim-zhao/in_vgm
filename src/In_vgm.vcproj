@@ -1,8 +1,9 @@
-<?xml version="1.0" encoding="gb2312"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="7.10"
 	Name="in_vgm"
+	RootNamespace="in_vgm"
 	SccProjectName=""
 	SccLocalPath="">
 	<Platforms>
@@ -12,7 +13,7 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="c:\program files\winamp\plugins\"
+			OutputDirectory="$(programfiles)\winamp\plugins\"
 			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			UseOfMFC="0"
@@ -26,7 +27,7 @@
 				EnableIntrinsicFunctions="TRUE"
 				ImproveFloatingPointConsistency="FALSE"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories=""
+				AdditionalIncludeDirectories="&quot;$(ZLIBDIR)&quot;;&quot;$(INPUTDIR)\Winamp SDK\Winamp&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				StringPooling="TRUE"
 				MinimalRebuild="FALSE"
@@ -42,9 +43,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="comctl32.lib zlib.lib"
-				ShowProgress="0"
-				OutputFile="c:\program Files\winamp\plugins\in_vgm.dll"
+				AdditionalDependencies="&quot;$(ZLIBDIR)\zlib.lib&quot; comctl32.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
 				IgnoreAllDefaultLibraries="FALSE"
@@ -52,7 +51,6 @@
 				ProgramDatabaseFile=".\Release/in_vgm.pdb"
 				SubSystem="2"
 				OptimizeForWindows98="1"
-				EntryPointSymbol=""
 				ImportLibrary=".\Release/in_vgm.lib"
 				TargetMachine="1"/>
 			<Tool
@@ -64,7 +62,11 @@
 				TypeLibraryName=".\Release/In_vgm.tlb"
 				HeaderFileName=""/>
 			<Tool
-				Name="VCPostBuildEventTool"/>
+				Name="VCPostBuildEventTool"
+				Description="Copying docs to target dir, target to solution dir..."
+				CommandLine="copy &quot;$(InputDir)\in_vgm.html&quot; &quot;$(OutDir)&quot;
+copy &quot;$(TargetPath)&quot; &quot;$(SolutionDir)&quot;
+"/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
 			<Tool
@@ -86,7 +88,7 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="c:\program files\winamp\plugins\"
+			OutputDirectory="$(programfiles)\winamp\plugins\"
 			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			UseOfMFC="0"
@@ -95,7 +97,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=""
+				FavorSizeOrSpeed="0"
+				AdditionalIncludeDirectories="$(ZLIBDIR)"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				RuntimeLibrary="3"
 				PrecompiledHeaderFile=".\Debug/In_vgm.pch"
@@ -105,13 +108,12 @@
 				WarningLevel="3"
 				SuppressStartupBanner="TRUE"
 				DebugInformationFormat="3"
-				CompileAs="0"/>
+				CompileAs="1"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="zlib.lib comctl32.lib"
-				OutputFile="C:\program Files\winamp\plugins\in_vgm.dll"
+				AdditionalDependencies="&quot;$(ZLIBDIR)\zlib.lib&quot; comctl32.lib"
 				LinkIncremental="1"
 				SuppressStartupBanner="TRUE"
 				IgnoreAllDefaultLibraries="FALSE"
@@ -157,153 +159,265 @@
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat;for;f90">
 			<File
-				RelativePath="emu2413.c">
-				<FileConfiguration
-					Name="Release|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
-						BrowseInformation="1"/>
-				</FileConfiguration>
+				RelativePath=".\apply_gain.c">
+			</File>
+			<File
+				RelativePath=".\common.c">
+			</File>
+			<File
+				RelativePath=".\fileinfo.c">
+			</File>
+			<File
+				RelativePath=".\Winamp SDK\GlobalConfig.cpp">
 				<FileConfiguration
 					Name="Debug|Win32">
 					<Tool
 						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"/>
+						CompileAs="2"/>
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="gens_ym2612.c">
-				<FileConfiguration
-					Name="Release|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
-						BrowseInformation="1"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"/>
-				</FileConfiguration>
+				RelativePath="in_vgm.c">
 			</File>
 			<File
-				RelativePath="In_vgm.c">
-				<FileConfiguration
-					Name="Release|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
-						BrowseInformation="1"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"/>
-				</FileConfiguration>
+				RelativePath=".\panning.c">
 			</File>
 			<File
-				RelativePath="mame_ym2151.c">
-				<FileConfiguration
-					Name="Release|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
-						BrowseInformation="1"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"
-						WarningLevel="1"/>
-				</FileConfiguration>
+				RelativePath=".\platform_specific.c">
 			</File>
 			<File
-				RelativePath="sn76489.c">
-				<FileConfiguration
-					Name="Release|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;$(NoInherit)"
-						BrowseInformation="1"/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32">
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;$(NoInherit)"/>
-				</FileConfiguration>
+				RelativePath=".\un7zip.c">
 			</File>
+			<File
+				RelativePath=".\vgmcore.c">
+			</File>
+			<Filter
+				Name="emulators"
+				Filter="">
+				<Filter
+					Name="Gens"
+					Filter="">
+					<File
+						RelativePath=".\gens\ym2612.c">
+					</File>
+					<File
+						RelativePath=".\gens\ym2612.h">
+					</File>
+				</Filter>
+				<Filter
+					Name="MAME"
+					Filter="">
+					<File
+						RelativePath=".\mame\ym2151.c">
+					</File>
+					<File
+						RelativePath=".\mame\ym2151.h">
+					</File>
+				</Filter>
+				<Filter
+					Name="emu2413"
+					Filter="">
+					<File
+						RelativePath=".\emu2413\emu2413.c">
+						<FileConfiguration
+							Name="Release|Win32">
+							<Tool
+								Name="VCCLCompilerTool"
+								ObjectFile="$(IntDir)/$(InputName)1.obj"/>
+						</FileConfiguration>
+						<FileConfiguration
+							Name="Debug|Win32">
+							<Tool
+								Name="VCCLCompilerTool"
+								ObjectFile="$(IntDir)/$(InputName)1.obj"/>
+						</FileConfiguration>
+					</File>
+					<File
+						RelativePath=".\emu2413\emu2413.h">
+					</File>
+				</Filter>
+				<Filter
+					Name="SN76489"
+					Filter="">
+					<File
+						RelativePath=".\sn76489\sn76489.c">
+					</File>
+					<File
+						RelativePath=".\sn76489\sn76489.h">
+					</File>
+				</Filter>
+			</Filter>
+			<Filter
+				Name="LZMA"
+				Filter="">
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zAlloc.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zAlloc.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zBuffer.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zBuffer.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zCrc.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zCrc.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zDecode.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zDecode.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zExtract.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zExtract.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zHeader.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zHeader.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zIn.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zIn.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zItem.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zItem.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zMethodID.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zMethodID.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zTypes.h">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Compress\Lzma_c\LzmaDecode.c">
+				</File>
+				<File
+					RelativePath=".\Lzma\C\7zip\Compress\Lzma_c\LzmaDecode.h">
+				</File>
+			</Filter>
+			<Filter
+				Name="sqlite"
+				Filter="">
+				<File
+					RelativePath=".\sqlite\sqlite3.c">
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;fi;fd">
 			<File
-				RelativePath="in2.h">
+				RelativePath=".\apply_gain.h">
 			</File>
 			<File
-				RelativePath="out.h">
+				RelativePath=".\common.h">
 			</File>
 			<File
-				RelativePath=".\resource.h">
+				RelativePath=".\fileinfo.h">
 			</File>
 			<File
-				RelativePath=".\vgm.h">
+				RelativePath=".\gd3.h">
 			</File>
+			<File
+				RelativePath=".\Winamp SDK\GlobalConfig.h">
+			</File>
+			<File
+				RelativePath=".\panning.h">
+			</File>
+			<File
+				RelativePath=".\platform_specific.h">
+			</File>
+			<File
+				RelativePath="resource.h">
+			</File>
+			<File
+				RelativePath=".\sqlite\sqlite3.h">
+			</File>
+			<File
+				RelativePath="vgm.h">
+			</File>
+			<File
+				RelativePath=".\vgmcore.h">
+			</File>
+			<Filter
+				Name="Winamp"
+				Filter="">
+				<File
+					RelativePath=".\Winamp SDK\Winamp\In2.h">
+				</File>
+				<File
+					RelativePath=".\Winamp SDK\Winamp\ipc_pe.h">
+				</File>
+				<File
+					RelativePath=".\Winamp SDK\Winamp\Out.h">
+				</File>
+				<File
+					RelativePath=".\Winamp SDK\Winamp\wa_ipc.h">
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Resource Files"
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe">
 			<File
-				RelativePath=".\baby.bmp">
+				RelativePath=".\images\bitmap1.bmp">
 			</File>
 			<File
 				RelativePath="dialogues.rc">
 			</File>
 			<File
-				RelativePath="logo.bmp">
+				RelativePath="images\logo.bmp">
 			</File>
 			<File
 				RelativePath="mainicon.ico">
 			</File>
 			<File
-				RelativePath=".\tabicons.bmp">
+				RelativePath="images\tabicons.bmp">
 			</File>
 		</Filter>
 		<Filter
 			Name="Documentation"
 			Filter="txt">
 			<File
+				RelativePath="gd3spec100.txt">
+			</File>
+			<File
 				RelativePath="in_vgm source readme.txt">
 			</File>
 			<File
-				RelativePath="in_vgm.txt">
+				RelativePath=".\in_vgm.html">
 			</File>
 			<File
-				RelativePath=".\vgmspec150.txt">
+				RelativePath="vgmspec150.txt">
+			</File>
+		</Filter>
+		<Filter
+			Name="Other stuff"
+			Filter="">
+			<File
+				RelativePath=".\htmlafter.txt">
+			</File>
+			<File
+				RelativePath=".\htmlbefore.txt">
 			</File>
 		</Filter>
 	</Files>

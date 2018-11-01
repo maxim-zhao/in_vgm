@@ -6,4 +6,5 @@
 "td.lang{font-weight:bold;}"
 "td.is{background:#005078;}"
 "a{color:#ffffff;font-weight:bold;}"
+"textarea{background:#005078;color:white;border:none;}"
 "</style><base target=_new></head><body><center><h1>VGM plugin GD3 tag output</h1><a href=GD3.html>Open in new browser window</a><table border=0 cellspacing=2><tr><td></td><td class=lang>English</td><td class=lang>Japanese</td></tr>"

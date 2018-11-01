@@ -76,7 +76,7 @@ typedef struct __OPLL {
   e_uint32 opllstep ;
   e_int32 prev, next ;
   e_int32 sprev[2],snext[2];
-  e_int32 pan[16];
+  float pan[16][2];
 #endif
 
   /* Register */
