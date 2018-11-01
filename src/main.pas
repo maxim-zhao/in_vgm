@@ -1,11 +1,13 @@
-unit defs;
+{-$DEFINE FM} // Enables FM emulation
+
+unit main;
 
 interface
 
 uses
-  Windows, SysUtils, Messages,
+  Windows, SysUtils, Messages, ShellAPI,
 
-  GZIO;
+  GZIO, SN76489 {$IFDEF FM}, YM2413{$ENDIF}, http;
 
 type
   PShortInt = ^ShortInt;
@@ -183,6 +185,8 @@ type
   function InfoBox(afile : PChar; hwndParent : HWND) : Integer; cdecl;
   procedure eq_set(aOn : Integer; data : PChar; preamp : Integer); cdecl;
 
+  procedure DisplayMessage(const text:string);
+
 const
   IN_VER = $100;
   OUT_VER = $10;
@@ -191,7 +195,7 @@ const
 
   WinampInputPlugin : TWinampInputPlugin = (
     Version : IN_VER;
-    Description : 'VGM input plugin v0.11';
+    Description : 'VGM input plugin v0.12';
     hMainWindow : 0;
     hDllInstance : 0;
     FileExtensions : 'vgm;vgz'#0'VGM game audio (*.vgm,*.vgz)'#0; // accepted extensions
@@ -237,7 +241,7 @@ implementation
 type
   TVGMHeader = packed record
     IDString:array[0..3] of char;
-    FileSize,Version,PSGClock,FMClock,GD3Location,TrackLength,LoopPoint,LoopLength:longint;
+    FileSize,Version,PSGClock,FMClock,GD3Location,TrackLength,LoopPoint,LoopLength,Rate:longint;
   end;
   TGD3Header = packed record
     IDString:array[0..3] of char;
@@ -260,14 +264,12 @@ var
   sample_buffer:array[0..576*2*NumChannels-1] of SmallInt;
   Paused:integer;
   f:gzfile;
-  TrackLengthInms,LoopLengthInms,LoopOffset:integer;
+  TrackLengthInms,LoopLengthInms,LoopOffset,FileRate:integer;
   InfoStrings:array[0..NumStrings] of string; // 0 is the filename...
 
   // Global sound synth vars
   SeekToSampleNumber: longint;
-  PSGVolumes:array[0..3] of shortint;
-  PSGStereo,PSGMute:byte;
-  PSGClockValue:longint;
+  PSGClockValue,YMClockValue:longint;
 
   // File buffer
   FileBuffer:pByteArray;
@@ -277,6 +279,12 @@ var
   NumLoopsDone,NumLoops:integer;
 
   TrackTitleFormat:string;
+
+  PlaybackRate:integer;
+
+  DisplayMsg,
+  CurrentURLFilename,
+  CurrentURL:string;
 
 function ReadString(const fh:gzfile):string;
 var
@@ -291,9 +299,14 @@ begin
   Result:=s;
 end;
 
+function IsURL(const url:string):boolean;
+begin
+  result:=(pos('http://',url)=1) or (pos('ftp://',url)=1);
+end;
+
 procedure about(hwndParent : HWND); cdecl;
 begin
-  MessageBox(
+  Windows.MessageBox(
     WinampInputPlugin.hMainWindow,
     'VGM 1.00 Winamp input plugin'#13#13'by Maxim in 2001'#13'maxim@mwos.cjb.net'#13'http://www.smspower.org/music'#13'Made in Delphi'#13#13+
     'Current status:'#13+
@@ -302,9 +315,9 @@ begin
     'PSG sychronous noise - tested against a real system, seems right'#13+
     '(note that a real PSG is quite far from the ideal device I''m simulating...)'#13+
     'PSG stereo - seems to work'#13+
-    'YM2413 - horribly complicated...'#13+
+    'YM2413 - not working, removed from this build'#13+
     'YM(other) - not even considered yet'#13#13+
-    'Don''t be put off by the pre-0.1 version numbers. This is a non-commercial'#13+
+    'Don''t be put off by the pre-1.0 version numbers. This is a non-commercial'#13+
     'project and as such it is permanently in beta.',
     WinampInputPlugin.Description,
     0
@@ -318,6 +331,8 @@ var
 begin
   INIFilename:=ExtractFilePath(ParamStr(0))+'winamp.ini';
   NumLoops:=GetPrivateProfileInt('Maxim''s VGM input plugin','NumLoops',1,PChar(INIFilename));
+  PlaybackRate:=GetPrivateProfileInt('Maxim''s VGM input plugin','Playback rate',0,PChar(INIFilename));
+
   TempPChar:=StrAlloc(1024);
   try
     GetPrivateProfileString('Maxim''s VGM input plugin','Title format','%1 - %2',TempPChar,1024,PChar(INIFilename));
@@ -325,6 +340,9 @@ begin
   finally
     StrDispose(TempPChar);
   end;
+
+  CurrentURLFilename:='';
+  CurrentURL:='';
 end;
 
 procedure quit;
@@ -334,6 +352,7 @@ begin
   INIFilename:=ExtractFilePath(ParamStr(0))+'winamp.ini';
   WritePrivateProfileString('Maxim''s VGM input plugin','NumLoops',PChar(IntToStr(NumLoops)),PChar(INIFilename));
   WritePrivateProfileString('Maxim''s VGM input plugin','Title format',PChar(TrackTitleFormat),PChar(INIFilename));
+  WritePrivateProfileString('Maxim''s VGM input plugin','Playback rate',PChar(IntToStr(PlaybackRate)),PChar(INIFilename));
 end;
 
 function IsOurFile(fn : PChar) : Integer;
@@ -345,24 +364,9 @@ procedure PlayThread(b:Pointer); stdcall;
 const
   NoiseInitialState=0;
   PSGVolumeValues:array[0..15] of word = (8028,8028,8028,6842,5603,4471,3636,2909,2316,1778,1427,1104,862,673,539,0);
-  //###
-//  WaitFactor=1.2;
 var
   l,x,SamplesTillNextRead:integer;
-  {a,}d,PSGFrequencyLowBits,Channel:byte;
-  ToneFreqs:array[0..3] of word; // frequency register values (total)
-  ToneFreqVals:array[0..3] of smallint; // frequency register values (counters)
-  ToneFreqPos:array[0..3] of shortint; // frequency channel flip-flops
-  NoiseShiftRegister:dword;
-  NoiseFeedback:longint;
-  Clock,dClock:double;
-  NumClocksForSample:byte;
-  i:byte;
-  Channels:array[0..3] of smallint;
-
-  //###
-//  FractionalSamplesTillNextRead:single;
-
+  WaitFactor,FractionalSamplesTillNextRead:single;
   function ReadByte:byte;
   begin
     if FileBufferPos=BufferSize then begin // read a block
@@ -373,28 +377,16 @@ var
     Inc(FileBufferPos);
   end;
 begin
-  dClock:=PSGClockValue/16/44100;
-  PSGFrequencyLowBits:=0;
-  Channel:=4;
-  // Set volumes to 0
-  for i:=0 to 3 do PSGVolumes[i]:=0;
-  // Set all channels on
-  PSGMute:=$f;
-  PSGStereo:=$ff;
-  // Set all frequencies to 0
-  for i:=0 to 3 do ToneFreqs[i]:=$000;
-  // Set counters to 0
-  for i:=0 to 3 do ToneFreqVals[i]:=0;
-  // Set flip-flops to a position
-  for i:=0 to 3 do ToneFreqPos[i]:=1;
-  // Initialise noise generator
-  NoiseShiftRegister:=NoiseInitialState;
-  NoiseFeedback:=0;
-  // Zero clock
-  Clock:=0;
+  if (PlaybackRate=0) or (FileRate=0) then WaitFactor:=1.0
+  else WaitFactor:=FileRate/PlaybackRate;
+
+  SN76489_Init(PSGClockValue);
+{$IFDEF FM}
+  YM2413_Init(YMClockValue);
+{$ENDIF}
+
   SamplesTillNextRead:=0;
-  //###
-//  FractionalSamplesTillNextRead:=0;
+  FractionalSamplesTillNextRead:=0;
 
   while integer(b^)=0 do begin
     // ---number of bytes I can write---------  --size of buffer----- ---x2 if dsp is active because----
@@ -405,66 +397,18 @@ begin
       for x:=0 to l div 2 -1 do begin // fill sample buffer
         while (SamplesTillNextRead=0) {and not EoF(f)} do begin
           case ReadByte of
-          $4f: PSGStereo:=ReadByte;
-          $50: begin // PSG
-                 d:=ReadByte;
-                 case (d and $90) of
-                 $00,$10: begin
-                   if (Channel and $4 =0) then begin
-                     ToneFreqs[Channel]:=(d and $3F) shl 4 or PSGFrequencyLowBits;
-                     if ToneFreqs[Channel]<5 then begin
-                       ToneFreqs[Channel]:=0; // seems to be what a real SMS does
-                       PSGVolumes[Channel]:=0;
-                       ToneFreqVals[Channel]:=0;
-                     end;
-                   end;
-                 end;
-                 $80: if (d and $60=$60) then begin // noise
-                        ToneFreqs[3]:=$10 shl (d and $3);
-                        if (d and $4=$4) then NoiseFeedback:=$12000 else NoiseFeedback:=$8000;
-                        NoiseShiftRegister:=NoiseInitialState;
-                        Channel:=4;
-                      end
-                      else begin
-                        Channel:=(d and $60) shr 5;
-                        PSGFrequencyLowBits:=d and $F;
-                      end; // First frequency byte
-                 $90: begin
-                        PSGVolumes[(d and $60) shr 5]:=d and $F; // Volume
-                        Channel:=4;
-                      end;  
-                 end;
-               end;
-          $51..$5f: begin readbyte; readbyte; end;
-{
-          $51: begin // YM413
-                 a:=ReadByte;
-                 d:=ReadByte;
-                 case a of
-                 // Registers 00 to 06 for user-defined instrument... so not important
-                 // Variables not actually here yet...
-                 // AM[n] = amplitude modulation on n (0=carrier, 1=modulator) on (1) or off (0)
-                 // FV[n] = frequency vibration
-                 // Decay[n]
-                 $00,$01: begin
-                   AM[a]   :=Ord(d and $80>0);
-                   FV[a]   :=Ord(d and $40>0);
-                   Decay[n]:=Ord(d and $20>0);
-                   // key scale rate???
-                   // multi sample wave selection???
-                 end;
-                 $02:;
-                 // Variables not actually here yet...
-                 // FMRhythm = which rhythm intruments we are asked to play
-                 $0E: begin // rhythm
-                        if (d and $20>0) then FMRhythm:=d and $1F;
-                      end;
-                 end;
-               end;
-}
-          $61: SamplesTillNextRead:=ReadByte or ReadByte shl 8;
-          $62: SamplesTillNextRead:=735;
-          $63: SamplesTillNextRead:=882;
+          $4f: SN76489_GGStereoWrite(ReadByte);
+          $50: SN76489_Write(ReadByte);
+
+{$IFDEF FM}
+          $51: YM2413_Write(ReadByte,ReadByte);
+          $52..$5f: begin readbyte; readbyte; end; // unemulated and reserved slots
+{$ELSE}
+          $51..$5f: begin readbyte; readbyte; end; // unemulated and reserved slots
+{$ENDIF}
+          $61: SamplesTillNextRead:=ReadByte or ReadByte shl 8; // Wait xxxx samples
+          $62: SamplesTillNextRead:=735; // Wait 1/60s
+          $63: SamplesTillNextRead:=882; // Wait 1/50s
           $66: begin // end of sound data
                  Inc(NumLoopsDone);
                  if (NumLoopsDone>NumLoops) or (LoopOffset=0) then repeat // stop file
@@ -487,73 +431,28 @@ begin
                end;
           end;
 
-          //###
-//          FractionalSamplesTillNextRead:=FractionalSamplesTillNextRead+SamplesTillNextRead*WaitFactor;
-//          SamplesTillNextRead:=Trunc(FractionalSamplesTillNextRead);
-//          FractionalSamplesTillNextRead:=Frac(FractionalSamplesTillNextRead);
+          FractionalSamplesTillNextRead:=FractionalSamplesTillNextRead+SamplesTillNextRead*WaitFactor;
+          SamplesTillNextRead:=Trunc(FractionalSamplesTillNextRead);
+          FractionalSamplesTillNextRead:=Frac(FractionalSamplesTillNextRead);
 
           if SeekToSampleNumber>-1 then begin
             Dec(SeekToSampleNumber,SamplesTillNextRead);
             SamplesTillNextRead:=0;
-            if SeekToSampleNumber<-1 then SamplesTillNextRead:=-SeekToSampleNumber+1;
+            if SeekToSampleNumber<0 then SamplesTillNextRead:=-SeekToSampleNumber;
             Continue;
           end;
         end;
 
-
-        Channels[0]:=PSGMute       and $1*PSGVolumeValues[PSGVolumes[0]]*ToneFreqPos[0];
-        Channels[1]:=PSGMute shr 1 and $1*PSGVolumeValues[PSGVolumes[1]]*ToneFreqPos[1];
-        Channels[2]:=PSGMute shr 2 and $1*PSGVolumeValues[PSGVolumes[2]]*ToneFreqPos[2];
-        Channels[3]:=PSGMute shr 3 and $1*PSGVolumeValues[PSGVolumes[3]]*(NoiseShiftRegister and $1);
-
-        // Debug permanent channel muting 
-//        Channels[0]:=0;
-//        Channels[1]:=0;
-//        Channels[2]:=0;
-//        Channels[3]:=0;
-
-        // left
-        sample_buffer[2*x]  :=(PSGStereo shr 4 and $1*Channels[0]+
-                               PSGStereo shr 5 and $1*Channels[1]+
-                               PSGStereo shr 6 and $1*Channels[2]+
-                               PSGStereo shr 7 and $1*Channels[3]);
-        // right
-        sample_buffer[2*x+1]:=(PSGStereo       and $1*Channels[0]+
-                               PSGStereo shr 1 and $1*Channels[1]+
-                               PSGStereo shr 2 and $1*Channels[2]+
-                               PSGStereo shr 3 and $1*Channels[3]);
-
-        Clock:=Clock+dClock;
-        NumClocksForSample:=Trunc(Clock);
-        Clock:=Frac(Clock);
-
-        // Repetetive code is marginally faster than a loop (probably)
-        if ToneFreqs[0]<>0 then Dec(ToneFreqVals[0],NumClocksForSample);
-        if ToneFreqs[1]<>0 then Dec(ToneFreqVals[1],NumClocksForSample);
-        if ToneFreqs[2]<>0 then Dec(ToneFreqVals[2],NumClocksForSample);
-
-        if ToneFreqs[3]=128 then ToneFreqVals[3]:=ToneFreqVals[2] else Dec(ToneFreqVals[3],NumClocksForSample);
-
-        if ToneFreqVals[0]<0 then begin ToneFreqPos[0]:=-ToneFreqPos[0]; Inc(ToneFreqVals[0],ToneFreqs[0]); end;
-        if ToneFreqVals[1]<0 then begin ToneFreqPos[1]:=-ToneFreqPos[1]; Inc(ToneFreqVals[1],ToneFreqs[1]); end;
-        if ToneFreqVals[2]<0 then begin ToneFreqPos[2]:=-ToneFreqPos[2]; Inc(ToneFreqVals[2],ToneFreqs[2]); end;
-        if ToneFreqVals[3]<0 then begin
-          ToneFreqPos[3]:=-ToneFreqPos[3];
-          Inc(ToneFreqVals[3],ToneFreqs[3]);
-          if ToneFreqPos[3]=1 then begin
-            if NoiseShiftRegister=0 then NoiseShiftRegister:=1;
-            if (NoiseShiftRegister and $1=$1)
-            then NoiseShiftRegister:=NoiseShiftRegister shr 1 xor NoiseFeedback
-            else NoiseShiftRegister:=NoiseShiftRegister shr 1;
-          end;
-        end;
-
+        SN76489_WriteToBuffer(sample_buffer,x); // gets overwritten
+{$IFDEF FM}
+        YM2413_WriteToBuffer(sample_buffer,x);
+{$ENDIF}
         Dec(SamplesTillNextRead);
       end;
 
       x:=WinampInputPlugin.OutputPlugin.GetWrittenTime;
-      WinampInputPlugin.SAAddPCMData(@sample_buffer,NumChannels,16,x);  // add to spectrum vis
-      WinampInputPlugin.VSAAddPCMData(@sample_buffer,NumChannels,16,x); // add to wave vis
+      WinampInputPlugin.SAAddPCMData(@sample_buffer,NumChannels,16,x);  // add to built-in vis
+      WinampInputPlugin.VSAAddPCMData(@sample_buffer,NumChannels,16,x); // add to plugin vis
 
       l:=WinampInputPlugin.dsp_dosamples(PSmallInt(@sample_buffer),l div NumChannels,16,NumChannels,44100); // process with EQ
 
@@ -562,9 +461,10 @@ begin
   end;
 end;
 
-function play(fn : PChar) : Integer;
+function playfile(fn:string):integer;
 var
-  maxlatency,tmp:integer;
+  maxlatency:integer;
+  {$IFDEF VER140}tmp:cardinal;{$ELSE}tmp:integer;{$ENDIF}
   VGMHeader: TVGMHeader;
 
   function gzFileSize(f:gzfile):longint;
@@ -580,7 +480,7 @@ begin
     exit;
   end;
 
-  lastfn:=strpas(fn);
+  lastfn:=fn;
 
   f:=gzOpen(fn,'r',0);
   gzRead(f,@VGMHeader,SizeOf(VGMHeader));
@@ -615,7 +515,10 @@ begin
   end;
 
   PSGClockValue:=VGMHeader.PSGClock;
-  if PSGClockValue=0 then PSGClockValue:=3579540;
+  YMClockValue:=VGMHeader.FMClock;
+//  if PSGClockValue=0 then PSGClockValue:=3579540;
+
+  FileRate:=VGMHeader.Rate;
 
   gzSeek(f,$40,0);
   paused:=0;
@@ -648,6 +551,29 @@ begin
   result:=0;
 end;
 
+function play(fn : PChar) : Integer;
+var
+  Filename:string;
+begin
+  CurrentURLFilename:='';
+  CurrentURL:='';
+  Filename:=fn;
+  if IsURL(Filename) then begin // it's a URL!
+    // Get file...
+    CurrentURL:=Filename;
+    Filename:=URL2File(Filename);
+    if Filename[1]='#'
+    then begin
+      result:=-1;
+      DisplayMessage(copy(Filename,2,MaxInt));
+    end else begin
+      DisplayMessage('');
+      CurrentURLFilename:=Filename;
+      result:=playfile(Filename);
+    end
+  end else result:=playfile(Filename);
+end;
+
 procedure pause;
 begin
   paused:=1;
@@ -667,7 +593,7 @@ end;
 
 procedure stop;
 begin
-  if thread_handle<>-1 then begin
+  if thread_handle<>INVALID_HANDLE_VALUE then begin
     killDecodeThread:=1;
     if WaitForSingleObject(thread_handle,Infinite)=WAIT_TIMEOUT then begin
       MessageBox(WinampInputPlugin.hMainWindow,'error asking thread to die!','error killing decode thread',0);
@@ -679,15 +605,28 @@ begin
 
   gzClose(f);
 
+{$IFDEF FM}
+  YM2413_Close;
+{$ENDIF}
+
   if FileBuffer<>nil then FreeMem(FileBuffer,BufferSize);
 
   WinampInputPlugin.OutputPlugin.Close;
   WinampInputPlugin.SAVSADeInit;
+
+  CurrentURLFilename:='';
+  DisplayMessage('');
 end;
 
 function getlength : Integer;
+var
+  WaitFactor:single;
 begin
-  result:=TrackLengthInms+NumLoops*LoopLengthInms;
+  if PlaybackRate=0 then WaitFactor:=1.0
+  else if (PSGClockValue div 10000)=354
+       then WaitFactor:=50/PlaybackRate
+       else WaitFactor:=60/PlaybackRate;
+  result:=Trunc((TrackLengthInms+NumLoops*LoopLengthInms)*WaitFactor);
 end;
 
 function getoutputtime : Integer;
@@ -724,15 +663,31 @@ var
   GD3Header:TGD3Header;
   LocalInfoStrings:array[1..NumStrings] of string; // 0 is the filename...
   i,j:integer;
+  WaitFactor:single;
+  TrackLength:longint;
 begin
+  if (Filename=nil) or (filename[0]=#0) and (DisplayMsg<>'') and Assigned(Title) then begin
+    StrPCopy(Title,DisplayMsg);
+    exit;
+  end;
+
   if (Filename=nil) or (filename[0]=#0) then Filename:=PChar(lastfn);
   if Assigned(Title) then begin
+    if CurrentURL=Filename then exit;
     if not FileExists(Filename) then begin
-      strpcopy(title,'Dead file! '+filename);
+      if IsURL(filename)
+      then strpcopy(title,filename)
+      else strpcopy(title,'Dead file! '+filename);
       exit;
     end;
     fh:=gzopen(Filename,'r',0);
     gzread(fh,@VGMHeader,SizeOf(VGMHeader));
+
+    if PlaybackRate=0 then WaitFactor:=1.0
+    else if (VGMHeader.PSGClock div 10000)=354
+       then WaitFactor:=50/PlaybackRate
+       else WaitFactor:=60/PlaybackRate;
+    TrackLength:=trunc((VGMHeader.TrackLength+VGMHeader.LoopLength*NumLoops)/44.1*WaitFactor);
 
     GD3Info:=extractfilename(Filename);
 
@@ -753,9 +708,9 @@ begin
           end;
         end;
       end;
-      if Assigned(length_in_ms) then length_in_ms^:=trunc((VGMHeader.TrackLength+VGMHeader.LoopLength*NumLoops)/44.1);
+      if Assigned(length_in_ms) then length_in_ms^:=TrackLength;
     end else begin
-      if Assigned(length_in_ms) then length_in_ms^:=trunc((VGMHeader.TrackLength+VGMHeader.LoopLength*NumLoops)/44.1);
+      if Assigned(length_in_ms) then length_in_ms^:=TrackLength;
     end;
     gzClose(fh);
     strPcopy(title,GD3Info);
@@ -764,9 +719,9 @@ end;
 
 function InfoBox(afile : PChar; hwndParent : HWND) : Integer; cdecl;
 var
+  fh:gzfile;
   VGMHeader:TVGMHeader;
   GD3Header:TGD3Header;
-  fh:gzfile;
   i:integer;
 function MainDialogProc(DlgWin:hWnd;DlgMessage:UInt;DlgWParam:WParam;DlgLParam:LParam):Bool; stdcall;
 const
@@ -783,6 +738,7 @@ const
   EnglishCheckBox=105;
   JapCheckBox=106;
   btnConfig=119;
+  btnURL=112;
 procedure SetLang(Japanese:boolean);
 begin
   SetDlgItemText(DlgWin,TrackName ,PChar(InfoStrings[1+Ord(Japanese)]));
@@ -811,14 +767,17 @@ begin
       end;
       EnglishCheckBox,JapCheckBox:SetLang(IsDlgButtonChecked(DlgWin,JapCheckBox)=1);
       btnConfig: Config(DlgWin);
+      btnURL: ShellExecute(WinampInputPlugin.hMainWindow,'open','http://www.smspower.org/music/','','',SW_SHOWNORMAL);
     end;
   end;
   Result:=False;
 end;
 begin
   Result:=0;
+
+  if afile=CurrentURL then afile:=PChar(currenturlfilename);
   if not FileExists(afile) then begin
-    MessageBox(WinampInputPlugin.hMainWindow,PChar('File not found - '+afile),WinampInputPlugin.Description,0);
+    if not IsURL(afile) then MessageBox(WinampInputPlugin.hMainWindow,PChar('File not found - '+afile),WinampInputPlugin.Description,0);
     exit;
   end;
   fh:=gzopen(afile,'r',0);
@@ -863,11 +822,27 @@ const
   ebLoopCount=103;
   ebTrackTitle=110;
   btnNSMIMEStuff=112;
+
+  ebPlaybackRate=113;
+
+  rbRateOriginal=114;
+  rbRate50=115;
+  rbRate60=116;
+  rbRateOther=117;
+
+  icnIcon=100;
 var
   mybool:longbool;
   i:integer;
   TempPChar:PChar;
-  key: HKey;
+  key:HKey;
+procedure SetStyle(const ID,style:integer);
+var
+  Control:HWnd;
+begin
+  Control:=GetDlgItem(DlgWin,ID);
+  SetWindowLong(Control,GWL_STYLE,GetWindowLong(Control,GWL_STYLE) or style);
+end;
 begin
   Result:=True;
   case DlgMessage of
@@ -875,19 +850,36 @@ begin
       // Fill in text
       SetFocus(GetDlgItem(DlgWin,btnOK));
       // Check tone channel checkboxes
-      SendDlgItemMessage(DlgWin,cbChan1,BM_SETCHECK,Ord(PSGMute and $1>0),0);
-      SendDlgItemMessage(DlgWin,cbChan2,BM_SETCHECK,Ord(PSGMute and $2>0),0);
-      SendDlgItemMessage(DlgWin,cbChan3,BM_SETCHECK,Ord(PSGMute and $4>0),0);
-      SendDlgItemMessage(DlgWin,cbChan4,BM_SETCHECK,Ord(PSGMute and $8>0),0);
+      CheckDlgButton(DlgWin,cbChan1,Ord(SN76489.PSGMute and $1>0));
+      CheckDlgButton(DlgWin,cbChan2,Ord(SN76489.PSGMute and $2>0));
+      CheckDlgButton(DlgWin,cbChan3,Ord(SN76489.PSGMute and $4>0));
+      CheckDlgButton(DlgWin,cbChan4,Ord(SN76489.PSGMute and $8>0));
       // Set loop count
       SetDlgItemInt(DlgWin,ebLoopCount,NumLoops,True);
       // Set title format text
       SetDlgItemText(DlgWin,ebTrackTitle,PChar(TrackTitleFormat));
+      // Speed settings
+      case PlaybackRate of
+      0: CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRateOriginal);
+      50: CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRate50);
+      60: CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRate60);
+      else CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRateOther);
+      end;
+      SendDlgItemMessage(DlgWin,ebPlaybackRate,WM_ENABLE,IsDlgButtonChecked(DlgWin,rbRateOther),0);
+      SendDlgItemMessage(DlgWin,ebPlaybackRate,EM_SETREADONLY,Ord(not Bool(IsDlgButtonChecked(DlgWin,rbRateOther))),0);
+      if PlaybackRate<>0
+      then SetDlgItemText(DlgWin,ebPlaybackRate,PChar(IntToStr(PlaybackRate)))
+      else SetDlgItemText(DlgWin,ebPlaybackRate,'60');
+
+      SetStyle(ebLoopCount,ES_NUMBER);
+      SetStyle(ebPlaybackRate,ES_NUMBER);
     end;
     WM_COMMAND:case LoWord(DlgWParam) of // Receive control-messages from dialog
       btnOK: begin
+        // Loop count
         i:=GetDlgItemInt(DlgWin,ebLoopCount,MyBool,True);
         if MyBool then NumLoops:=i;
+        // Title formatting
         TempPChar:=StrAlloc(1024);
         try
           GetDlgItemText(DlgWin,ebTrackTitle,TempPChar,1024);
@@ -895,6 +887,15 @@ begin
         finally
           StrDispose(TempPChar);
         end;
+        // Playback rate
+        PlaybackRate:=0;
+        if IsDlgButtonChecked(DlgWin,rbRate50)=1 then PlaybackRate:=50
+        else if IsDlgButtonChecked(DlgWin,rbRate60)=1 then PlaybackRate:=60
+        else if IsDlgButtonChecked(DlgWin,rbRateOther)=1 then begin
+          i:=GetDlgItemInt(DlgWin,ebPlaybackRate,MyBool,True);
+          if MyBool and (i>0) and (i<500) then PlaybackRate:=i;
+        end;
+        // Close dialogue
         EndDialog(DlgWin, LOWORD(DlgWParam));
         Exit;
       end;
@@ -903,10 +904,10 @@ begin
         Exit;
       end;
       cbChan1,cbChan2,cbChan3,cbChan4:
-        PSGMute:=IsDlgButtonChecked(DlgWin,cbChan1)
-              or IsDlgButtonChecked(DlgWin,cbChan2) shl 1
-              or IsDlgButtonChecked(DlgWin,cbChan3) shl 2
-              or IsDlgButtonChecked(DlgWin,cbChan4) shl 3;
+        SN76489.PSGMute:=IsDlgButtonChecked(DlgWin,cbChan1)
+                      or IsDlgButtonChecked(DlgWin,cbChan2) shl 1
+                      or IsDlgButtonChecked(DlgWin,cbChan3) shl 2
+                      or IsDlgButtonChecked(DlgWin,cbChan4) shl 3;
       btnNSMIMEStuff: if MessageBox(DlgWin,
         'This will write these two registry values:'#13+
         'HKCU\.vgm\Content Type=audio/vgm'#13+
@@ -925,12 +926,26 @@ begin
         then MessageBox(DlgWin,'Error setting value!','Error',MB_ICONERROR);
         RegCloseKey(key);
       end;
+      rbRateOriginal..rbRateOther: begin
+        CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,LoWord(DlgWParam));
+        SendDlgItemMessage(DlgWin,ebPlaybackRate,WM_ENABLE,IsDlgButtonChecked(DlgWin,rbRateOther),0);
+        SendDlgItemMessage(DlgWin,ebPlaybackRate,EM_SETREADONLY,Ord(not Bool(IsDlgButtonChecked(DlgWin,rbRateOther))),0);
+      end;
     end;
   end;
   Result:=False; // say I processed the message and set my control focus
 end;
 begin
   DialogBox(hInstance, 'CONFIGDIALOGUE', hwndParent, @ConfigDialogProc); // Open dialog
+end;
+
+procedure DisplayMessage(const text:string);
+begin
+  DisplayMsg:=text;
+  SendMessage(WinampInputPlugin.hMainWindow,243,0,0);
+  SendMessage(WinampInputPlugin.hMainWindow,WM_PAINT,0,0);
+  SendMessage(WinampInputPlugin.hMainWindow,WM_NCPAINT,0,0);
+//  Sleep(10);
 end;
 
 end.
