@@ -25,19 +25,19 @@
 				GlobalOptimizations="TRUE"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="TRUE"
-				ImproveFloatingPointConsistency="FALSE"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="&quot;$(ZLIBDIR)&quot;;&quot;$(INPUTDIR)\Winamp SDK\Winamp&quot;"
+				OptimizeForProcessor="3"
+				AdditionalIncludeDirectories="Winamp SDK\Wasabi"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
-				StringPooling="TRUE"
 				MinimalRebuild="FALSE"
 				RuntimeLibrary="0"
 				PrecompiledHeaderFile=".\Release/In_vgm.pch"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
-				BrowseInformation="1"
+				BrowseInformation="0"
 				WarningLevel="3"
+				DebugInformationFormat="3"
 				CompileAs="0"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
@@ -48,8 +48,13 @@
 				SuppressStartupBanner="TRUE"
 				IgnoreAllDefaultLibraries="FALSE"
 				IgnoreDefaultLibraryNames=""
+				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile=".\Release/in_vgm.pdb"
+				GenerateMapFile="TRUE"
+				MapExports="TRUE"
+				MapLines="TRUE"
 				SubSystem="2"
+				OptimizeReferences="2"
 				OptimizeForWindows98="1"
 				ImportLibrary=".\Release/in_vgm.lib"
 				TargetMachine="1"/>
@@ -93,28 +98,92 @@ copy &quot;$(TargetPath)&quot; &quot;$(SolutionDir)&quot;
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			WholeProgramOptimization="TRUE">
+			WholeProgramOptimization="FALSE">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				FavorSizeOrSpeed="0"
-				AdditionalIncludeDirectories="$(ZLIBDIR)"
+				AdditionalIncludeDirectories="Winamp SDK\Wasabi"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				RuntimeLibrary="3"
-				PrecompiledHeaderFile=".\Debug/In_vgm.pch"
+				EnableFunctionLevelLinking="TRUE"
 				AssemblerListingLocation=".\Debug/"
 				ObjectFile=".\Debug/"
 				ProgramDataBaseFileName=".\Debug/"
 				WarningLevel="3"
 				SuppressStartupBanner="TRUE"
-				DebugInformationFormat="3"
+				DebugInformationFormat="4"
 				CompileAs="0"/>
 			<Tool
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="&quot;$(ZLIBDIR)\zlib.lib&quot; comctl32.lib"
-				LinkIncremental="1"
+				SuppressStartupBanner="TRUE"
+				IgnoreAllDefaultLibraries="FALSE"
+				GenerateDebugInformation="TRUE"
+				ProgramDatabaseFile=".\Debug/in_vgm.pdb"
+				SubSystem="2"
+				ImportLibrary=".\Debug/in_vgm.lib"
+				TargetMachine="1"/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG"
+				MkTypLibCompatible="TRUE"
+				SuppressStartupBanner="TRUE"
+				TargetEnvironment="1"
+				TypeLibraryName=".\Debug/In_vgm.tlb"
+				HeaderFileName=""/>
+			<Tool
+				Name="VCPostBuildEventTool"/>
+			<Tool
+				Name="VCPreBuildEventTool"/>
+			<Tool
+				Name="VCPreLinkEventTool"/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"/>
+			<Tool
+				Name="VCWebDeploymentTool"/>
+			<Tool
+				Name="VCManagedWrapperGeneratorTool"/>
+			<Tool
+				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+		</Configuration>
+		<Configuration
+			Name="Debug (xmplay)|Win32"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
+			ConfigurationType="2"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			WholeProgramOptimization="FALSE">
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				FavorSizeOrSpeed="0"
+				AdditionalIncludeDirectories="Winamp SDK\Wasabi"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
+				RuntimeLibrary="3"
+				EnableFunctionLevelLinking="TRUE"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
+				WarningLevel="3"
+				SuppressStartupBanner="TRUE"
+				DebugInformationFormat="4"
+				CompileAs="0"/>
+			<Tool
+				Name="VCCustomBuildTool"/>
+			<Tool
+				Name="VCLinkerTool"
+				AdditionalDependencies="&quot;$(ZLIBDIR)\zlib.lib&quot; comctl32.lib"
+				OutputFile="C:\Documents and Settings\Maxim\Desktop\xmplay34\$(ProjectName).dll"
 				SuppressStartupBanner="TRUE"
 				IgnoreAllDefaultLibraries="FALSE"
 				GenerateDebugInformation="TRUE"
@@ -159,295 +228,259 @@ copy &quot;$(TargetPath)&quot; &quot;$(SolutionDir)&quot;
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat;for;f90">
 			<File
-				RelativePath=".\common.c">
-			</File>
-			<File
-				RelativePath=".\fileinfo.c">
-			</File>
-			<File
-				RelativePath="in_vgm.c">
+				RelativePath=".\in_vgm.cpp">
 			</File>
 			<File
 				RelativePath=".\panning.c">
 			</File>
 			<File
-				RelativePath=".\platform_specific.c">
+				RelativePath=".\PlatformDependent.cpp">
 			</File>
 			<File
-				RelativePath=".\un7zip.c">
+				RelativePath=".\PluginConfig.cpp">
 			</File>
 			<File
-				RelativePath=".\vgmcore.c">
+				RelativePath=".\PluginConfigDialog.cpp">
 			</File>
-			<Filter
-				Name="emulators"
-				Filter="">
-				<Filter
-					Name="Gens"
-					Filter="">
-					<File
-						RelativePath=".\gens\ym2612.c">
-					</File>
-					<File
-						RelativePath=".\gens\ym2612.h">
-					</File>
-				</Filter>
-				<Filter
-					Name="MAME"
-					Filter="">
-					<File
-						RelativePath=".\mame\ym2151.c">
-					</File>
-					<File
-						RelativePath=".\mame\ym2151.h">
-					</File>
-					<File
-						RelativePath=".\mame_ym2612_emu\Ym2612_Emu.c">
-					</File>
-					<File
-						RelativePath=".\mame_ym2612_emu\Ym2612_Emu.h">
-					</File>
-				</Filter>
-				<Filter
-					Name="emu2413"
-					Filter="">
-					<File
-						RelativePath=".\emu2413\emu2413.c">
-						<FileConfiguration
-							Name="Release|Win32">
-							<Tool
-								Name="VCCLCompilerTool"
-								ObjectFile="$(IntDir)/$(InputName)1.obj"/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Debug|Win32">
-							<Tool
-								Name="VCCLCompilerTool"
-								ObjectFile="$(IntDir)/$(InputName)1.obj"/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath=".\emu2413\emu2413.h">
-					</File>
-				</Filter>
-				<Filter
-					Name="SN76489"
-					Filter="">
-					<File
-						RelativePath=".\sn76489\sn76489.c">
-					</File>
-					<File
-						RelativePath=".\sn76489\sn76489.h">
-					</File>
-				</Filter>
-			</Filter>
-			<Filter
-				Name="LZMA"
-				Filter="">
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zAlloc.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zAlloc.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zBuffer.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zBuffer.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zCrc.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zCrc.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zDecode.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zDecode.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zExtract.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zExtract.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zHeader.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zHeader.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zIn.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zIn.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zItem.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zItem.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zMethodID.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zMethodID.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Archive\7z_C\7zTypes.h">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Compress\Lzma_c\LzmaDecode.c">
-				</File>
-				<File
-					RelativePath=".\Lzma\C\7zip\Compress\Lzma_c\LzmaDecode.h">
-				</File>
-			</Filter>
-			<Filter
-				Name="sqlite"
-				Filter="">
-				<File
-					RelativePath=".\sqlite\sqlite3.c">
-					<FileConfiguration
-						Name="Release|Win32">
-						<Tool
-							Name="VCCLCompilerTool"
-							WarningLevel="0"/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32">
-						<Tool
-							Name="VCCLCompilerTool"
-							WarningLevel="0"/>
-					</FileConfiguration>
-				</File>
-				<File
-					RelativePath=".\sqlite\sqlite3.h">
-				</File>
-			</Filter>
-			<Filter
-				Name="Replay Gain"
-				Filter="">
-				<File
-					RelativePath=".\apply_gain.c">
-				</File>
-				<File
-					RelativePath=".\apply_gain.h">
-				</File>
-			</Filter>
-			<Filter
-				Name="Winamp"
-				Filter="">
-				<File
-					RelativePath=".\winampsdk\GlobalConfig.cpp">
-					<FileConfiguration
-						Name="Debug|Win32">
-						<Tool
-							Name="VCCLCompilerTool"
-							CompileAs="0"/>
-					</FileConfiguration>
-				</File>
-			</Filter>
+			<File
+				RelativePath=".\VGMHeader.cpp">
+			</File>
+			<File
+				RelativePath=".\VGMMetadata.cpp">
+			</File>
+			<File
+				RelativePath=".\VGMPlayer.cpp">
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl;fi;fd">
 			<File
-				RelativePath=".\common.h">
-			</File>
-			<File
-				RelativePath=".\fileinfo.h">
-			</File>
-			<File
-				RelativePath=".\gd3.h">
+				RelativePath=".\GD3.h">
 			</File>
 			<File
 				RelativePath=".\panning.h">
 			</File>
 			<File
-				RelativePath=".\platform_specific.h">
+				RelativePath=".\PlatformDependent.h">
 			</File>
 			<File
-				RelativePath=".\PluginOptions.h">
+				RelativePath=".\PluginConfig.h">
 			</File>
 			<File
-				RelativePath="resource.h">
+				RelativePath=".\PluginConfigDialog.h">
 			</File>
 			<File
-				RelativePath="vgm.h">
+				RelativePath=".\resource.h">
 			</File>
 			<File
-				RelativePath=".\vgmcore.h">
+				RelativePath=".\VGM.h">
 			</File>
+			<File
+				RelativePath=".\VGMHeader.h">
+			</File>
+			<File
+				RelativePath=".\VGMMetadata.h">
+			</File>
+			<File
+				RelativePath=".\VGMPlayer.h">
+			</File>
+		</Filter>
+		<Filter
+			Name="Winamp SDK"
+			Filter="">
+			<File
+				RelativePath=".\GlobalConfig.cpp">
+			</File>
+			<File
+				RelativePath=".\GlobalConfig.h">
+			</File>
+			<File
+				RelativePath=".\winamp sdk\winamp\IN2.H">
+			</File>
+			<File
+				RelativePath=".\winamp sdk\winamp\OUT.H">
+			</File>
+			<File
+				RelativePath=".\winamp sdk\winamp\wa_ipc.h">
+			</File>
+		</Filter>
+		<Filter
+			Name="Chip emulators"
+			Filter="">
 			<Filter
-				Name="Winamp"
+				Name="SN76489"
 				Filter="">
 				<File
-					RelativePath=".\winampsdk\GlobalConfig.h">
+					RelativePath=".\sn76489\sn76489.c">
 				</File>
 				<File
-					RelativePath=".\Winamp SDK\Winamp\In2.h">
+					RelativePath=".\sn76489\sn76489.h">
+				</File>
+			</Filter>
+			<Filter
+				Name="YM2612"
+				Filter="">
+				<File
+					RelativePath=".\ym2612\fm.c">
 				</File>
 				<File
-					RelativePath=".\Winamp SDK\Winamp\ipc_pe.h">
+					RelativePath=".\ym2612\fm.h">
+				</File>
+			</Filter>
+			<Filter
+				Name="YM2413"
+				Filter="">
+				<File
+					RelativePath=".\ym2413\2413tone.h">
 				</File>
 				<File
-					RelativePath=".\Winamp SDK\Winamp\Out.h">
+					RelativePath=".\ym2413\281btone.h">
 				</File>
 				<File
-					RelativePath=".\Winamp SDK\Winamp\wa_ipc.h">
+					RelativePath=".\ym2413\emu2413.c">
+				</File>
+				<File
+					RelativePath=".\ym2413\emu2413.h">
+				</File>
+				<File
+					RelativePath=".\ym2413\emutypes.h">
+				</File>
+				<File
+					RelativePath=".\ym2413\vrc7tone.h">
 				</File>
 			</Filter>
 		</Filter>
 		<Filter
-			Name="Resource Files"
-			Filter="ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe">
-			<File
-				RelativePath=".\images\bitmap1.bmp">
-			</File>
-			<File
-				RelativePath="dialogues.rc">
-			</File>
-			<File
-				RelativePath="images\logo.bmp">
-			</File>
-			<File
-				RelativePath="mainicon.ico">
-			</File>
-			<File
-				RelativePath="images\tabicons.bmp">
-			</File>
-		</Filter>
-		<Filter
-			Name="Documentation"
-			Filter="txt">
-			<File
-				RelativePath="gd3spec100.txt">
-			</File>
-			<File
-				RelativePath="in_vgm source readme.txt">
-			</File>
-			<File
-				RelativePath=".\in_vgm.html">
-			</File>
-			<File
-				RelativePath="vgmspec150.txt">
-			</File>
-		</Filter>
-		<Filter
-			Name="Other stuff"
+			Name="Resources"
 			Filter="">
 			<File
-				RelativePath=".\htmlafter.txt">
+				RelativePath=".\in_vgm.rc">
 			</File>
 			<File
-				RelativePath=".\htmlbefore.txt">
+				RelativePath=".\resources\tabicons.bmp">
 			</File>
+			<Filter
+				Name="Resource sources"
+				Filter="">
+				<File
+					RelativePath=".\resources\tabicons.png">
+					<FileConfiguration
+						Name="Release|Win32">
+						<Tool
+							Name="VCCustomBuildTool"
+							Description="Converting 32-bit images from PNG to BMP"
+							CommandLine="&quot;$(InputDir)\alphahlp&quot; -fpng -cbmp &quot;$(InputDir)\$(InputFileName)&quot; &quot;$(InputDir)\$(InputName).bmp&quot;
+"
+							Outputs="&quot;$(InputDir)\$(InputName).bmp&quot;"/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Debug|Win32">
+						<Tool
+							Name="VCCustomBuildTool"
+							Description="Converting 32-bit images from PNG to BMP"
+							CommandLine="&quot;$(InputDir)\alphahlp&quot; -fpng -cbmp &quot;$(InputDir)\$(InputFileName)&quot; &quot;$(InputDir)\$(InputName).bmp&quot;
+"
+							Outputs="&quot;$(InputDir)\$(InputName).bmp&quot;"/>
+					</FileConfiguration>
+					<FileConfiguration
+						Name="Debug (xmplay)|Win32">
+						<Tool
+							Name="VCCustomBuildTool"
+							Description="Converting 32-bit images from PNG to BMP"
+							CommandLine="&quot;$(InputDir)\alphahlp&quot; -fpng -cbmp &quot;$(InputDir)\$(InputFileName)&quot; &quot;$(InputDir)\$(InputName).bmp&quot;
+"
+							Outputs="&quot;$(InputDir)\$(InputName).bmp&quot;"/>
+					</FileConfiguration>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="Libs"
+			Filter="">
+			<Filter
+				Name="sqlite"
+				Filter="">
+				<File
+					RelativePath=".\libs\sqlite\sqlite3.c">
+				</File>
+				<File
+					RelativePath=".\libs\sqlite\sqlite3.h">
+				</File>
+				<File
+					RelativePath=".\libs\sqlite\sqlite3ext.h">
+				</File>
+			</Filter>
+			<Filter
+				Name="LZMA"
+				Filter="">
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zAlloc.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zAlloc.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zBuffer.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zBuffer.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zCrc.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zCrc.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zDecode.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zDecode.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zExtract.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zExtract.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zHeader.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zHeader.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zIn.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zIn.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zItem.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zItem.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zMethodID.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zMethodID.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Archive\7z_C\7zTypes.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Compress\LZMA_C\LzmaDecode.c">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Compress\LZMA_C\LzmaDecode.h">
+				</File>
+				<File
+					RelativePath=".\libs\LZMA\C\7zip\Compress\LZMA_C\LzmaTypes.h">
+				</File>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>

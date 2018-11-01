@@ -6,11 +6,16 @@ EndProject
 Global
 	GlobalSection(SolutionConfiguration) = preSolution
 		Debug = Debug
+		Debug (xmplay) = Debug (xmplay)
 		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectDependencies) = postSolution
 	EndGlobalSection
 	GlobalSection(ProjectConfiguration) = postSolution
 		{E2AD8EA0-0352-4153-8306-1E1CAF328510}.Debug.ActiveCfg = Debug|Win32
 		{E2AD8EA0-0352-4153-8306-1E1CAF328510}.Debug.Build.0 = Debug|Win32
+		{E2AD8EA0-0352-4153-8306-1E1CAF328510}.Debug (xmplay).ActiveCfg = Debug (xmplay)|Win32
+		{E2AD8EA0-0352-4153-8306-1E1CAF328510}.Debug (xmplay).Build.0 = Debug (xmplay)|Win32
 		{E2AD8EA0-0352-4153-8306-1E1CAF328510}.Release.ActiveCfg = Release|Win32
 		{E2AD8EA0-0352-4153-8306-1E1CAF328510}.Release.Build.0 = Release|Win32
 	EndGlobalSection

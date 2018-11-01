@@ -10,3 +10,7 @@ Thumbs.db
 /src/sqlite/
 *.vgz
 /src/winampsdk/
+/src/libs/
+/src/SRC/
+*.suo
+/src/Winamp SDK/

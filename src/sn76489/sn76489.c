@@ -73,7 +73,7 @@ void SN76489_Reset(SN76489_Context* chip)
 		chip->IntermediatePos[i] = FLT_MIN;
 
 		/* Set panning to centre */
-		centre_panning( chip->panning[i] );
+		centrePanning( chip->panning[i] );
 	}
 
 	chip->LatchedRegister = 0;
@@ -203,7 +203,7 @@ void SN76489_Update(SN76489_Context* chip, INT16 **buffer, int length)
 					buffer[0][j] += (short)( chip->panning[i][0] * chip->Channels[i] ); /* left */
 					buffer[1][j] += (short)( chip->panning[i][1] * chip->Channels[i] ); /* right */
 				}
-		  }
+			}
 			else
 			{
 				// GG stereo overrides panning
@@ -220,7 +220,7 @@ void SN76489_Update(SN76489_Context* chip, INT16 **buffer, int length)
 		/* Decrement tone channel counters */
 		for ( i = 0; i <= 2; ++i )
 			chip->ToneFreqVals[i] -= chip->NumClocksForSample;
-	 
+
 		/* Noise channel: match to tone2 or decrement its counter */
 		if ( chip->NoiseFreq == 0x80 )
 			chip->ToneFreqVals[3] = chip->ToneFreqVals[2];
@@ -313,8 +313,8 @@ void SN76489_SetMute(SN76489_Context* chip, int val)
 
 void SN76489_SetPanning(SN76489_Context* chip, int ch0, int ch1, int ch2, int ch3)
 {
-	calc_panning( chip->panning[0], ch0 );
-	calc_panning( chip->panning[1], ch1 );
-	calc_panning( chip->panning[2], ch2 );
-	calc_panning( chip->panning[3], ch3 );
+	calcPanning( chip->panning[0], ch0 );
+	calcPanning( chip->panning[1], ch1 );
+	calcPanning( chip->panning[2], ch2 );
+	calcPanning( chip->panning[3], ch3 );
 }

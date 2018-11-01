@@ -1,0 +1,170 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_CONFIG DIALOGEX 0, 0, 246, 142
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | 
+    WS_SYSMENU
+CAPTION "Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,133,121,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,189,121,50,14
+    CONTROL         "",TC_CONFIG,"SysTabControl32",TCS_MULTILINE | 
+                    WS_TABSTOP,7,7,232,110
+END
+
+IDD_PLAYBACK DIALOGEX 0, 0, 186, 94
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
+EXSTYLE WS_EX_CONTROLPARENT
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "Play &looped section",IDC_STATIC,6,6,66,12,
+                    SS_CENTERIMAGE
+    EDITTEXT        EDIT_NUMLOOPS,78,6,30,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "times",IDC_STATIC,114,6,36,12,SS_CENTERIMAGE
+    CONTROL         "Loop &forever",CHECK_LOOPFOREVER,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,18,72,12
+    LTEXT           "Playback &rate",IDC_STATIC,6,30,66,12,SS_CENTERIMAGE
+    EDITTEXT        EDIT_PLAYBACKRATE,78,30,30,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Hz",IDC_STATIC,114,30,36,12,SS_CENTERIMAGE
+    LTEXT           "&Sampling rate",IDC_STATIC,6,42,66,12,SS_CENTERIMAGE
+    EDITTEXT        EDIT_SAMPLINGRATE,78,42,30,12,ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "Hz",IDC_STATIC,114,42,36,12,SS_CENTERIMAGE
+END
+
+IDD_TAGS DIALOGEX 0, 0, 186, 94
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD
+EXSTYLE WS_EX_CONTROLPARENT
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    CONTROL         "&Trim whitespace",CHECK_TRIMWHITESPACE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,6,162,12
+    CONTROL         "Prefer &Japanese",CHECK_PREFERJAPANESE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,18,162,12
+    CONTROL         "Append ""(FM)"" to YM2413 game titles",
+                    CHECK_APPENDFMTOYM2413,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,6,30,162,12
+    CONTROL         "Custom type ID (262144)",CHECK_CUSTOMTYPE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,42,162,12
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_CONFIG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 239
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 135
+    END
+
+    IDD_PLAYBACK, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 179
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 87
+    END
+
+    IDD_TAGS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 179
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 87
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+BM_TABICONS             BITMAP                  "resources\\tabicons.bmp"
+#endif    // Neutral resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// English (U.S.) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+#ifdef _WIN32
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+#endif //_WIN32
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // English (U.S.) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
