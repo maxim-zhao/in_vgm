@@ -3,14 +3,14 @@
 // VGM audio input plugin for Winamp
 // http://www.smspower.org/music
 // by Maxim <maxim@mwos.cjb.net> in 2001 and 2002
-// with help from BlackAura in March 2002
+// with help from BlackAura in March and April 2002
 //-----------------------------------------------------------------
 
 #define YM2413toPSG 0.6	// SMS/Mark III with FM pack - empirical value, real output would help
-#define YM2612toPSG 0.6	// Mega Drive/Genesis
-#define YM2151toXXX 0.5 // ???
+#define YM2612toPSG 0.8	// Mega Drive/Genesis
+#define YM2151toXXX 0.5 // CPS1
 
-#define PLUGINNAME "VGM input plugin v0.25"
+#define PLUGINNAME "VGM input plugin v0.26"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
@@ -40,6 +40,7 @@
 
 // BlackAura - MAME FM synthesiser (aargh!)
 #include "mame_fm.h"
+#include "mame_ym2151.h"
 
 #define ROUND(x) ((int)(x>0?x+0.5:x-0.5))
 
@@ -479,12 +480,12 @@ void about(HWND hwndParent)
 		"  output after I calculated the feedback network; but it doesn't match\n"
 		"  some other chips.\n"
 		"YM2413 - via EMU2413 (http://www.angel.ne.jp/~okazaki/ym2413).\n"
-		"YM(other) - not yet considered, engine authors please help!\n\n"
+		"YM2612 & YM2151 - via MAME FM core, thanks to BlackAura\n\n"
 		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial\n"
 		"project and as such it is permanently in beta.\n\n"
 		"Thanks go to:\n"
-		"Bock, Heliophobe, Mike G, Steve Snake, Dave, Charles MacDonald,\n"
-		"Ville Helin, Mitsutaka Okazaki, John Kortink, fx^\n\n"
+		"Mitsutaka Okazaki, BlackAura, Bock, Heliophobe, Mike G, Steve Snake,\n"
+		"Dave, Charles MacDonald, Ville Helin, John Kortink, fx^\n\n"
 		"   ...and Zhao Yuehua xxx wo ai ni"
 		,PLUGINNAME,MB_OK);
 }
@@ -818,9 +819,8 @@ void stop() {
 	if USINGCHIP(FM_YM2413) YM2612Shutdown();
 
 	// Stop YM2151
-#ifdef HAS_YM2151
-	if USINGCHIP(FM_YM2151) OPMShutdown();
-#endif
+	if USINGCHIP(FM_YM2151) YM2151Shutdown();
+
 	// Stop SN76489
 	// not needed
 };
@@ -1318,20 +1318,14 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						};
 						break;
 					case 0x54:	// BlackAura - YM2151 write
-						// Not here yet so fall through
 						b1=ReadByte();
 						b2=ReadByte();
 						if (FMClock) {
 							if (!USINGCHIP(FM_YM2151)) {
-#ifdef HAS_YM2151
-								OPMInit(1,FMClock,SAMPLERATE,NULL,NULL);
-#endif
+								YM2151Init(1,FMClock,SAMPLERATE);
 								FMChips|=FM_YM2151;
 							};
-#ifdef HAS_YM2151
-							YM2151Write(0,0,b1);
-							YM2151Write(0,1,b2);
-#endif
+							YM2151WriteReg(0,b1,b2);
 						};
 						break;
 					case 0x55:	// Reserved/unsupported
@@ -1448,16 +1442,17 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						if (PSGClock) MixAmount=YM2151toXXX;
 
 						// Get values
-						mameBuffer[0]=&mameLeft;
+						mameBuffer[0]=&mameLeft ;
 						mameBuffer[1]=&mameRight;
-#ifdef HAS_YM2151
-						if (YM2151Channels==0)
-							OPMUpdateOne(0,mameBuffer,1);
-						else
-#endif
+
+						if (YM2151Channels==0) {
+							YM2151UpdateOne(0,mameBuffer,1);
+							mameLeft *=2;	// Dodgy amplification
+							mameRight*=2;
+						} else
 							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
 
-						if (MixAmount!=DBL_MIN) {	// Mix
+						if (MixAmount!=DBL_MIN) {	// Mix?
 							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
 							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
 						} else {	// No mixing

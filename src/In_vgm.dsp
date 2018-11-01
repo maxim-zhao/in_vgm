@@ -121,6 +121,10 @@ SOURCE=.\mame_fm.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\mame_ym2151.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\sn76489.c
 # End Source File
 # End Group

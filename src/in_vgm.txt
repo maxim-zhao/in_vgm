@@ -1,4 +1,4 @@
-VGM input plugin 0.24
+VGM input plugin 0.26
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
@@ -17,7 +17,7 @@ Automatic Japanese:
 ‚Î“dŽqƒ[ƒ‹Ž„‚Í(‰pŒê‚Å)
 
 
-The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki (http://www.angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. It uses Zlib by Jean-loup Gailly and Mark Adler.
+The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki (http://www.angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. The YM2612 and YM2151 engines are from MAME (http://www.mame.net) and were added by BlackAura. It uses Zlib by Jean-loup Gailly and Mark Adler.
 
 
 Actually asked questions
@@ -35,7 +35,7 @@ Yes, it is. "Frequency modulation" means using one sine wave to change the frequ
 
 > The latest VGM plugin is much slower on my p133. The last one works fine, but with the new one the songs stops and then continues after a second all the time. Why? 
 
-Because FM emulation is a lot more complicated than PSG emulation, so it takes more time (see the benchmarks below). You might like to get VGMTool to optimise any VGMs with unnecessary chip data in them, or possibly re-download the files if they've been updated with optimised versions.
+Because FM emulation is a lot more complicated than PSG emulation, so it takes more time. You might like to get VGMTool to optimise any VGMs with unnecessary chip data in them, or possibly re-download the files if they've been updated with optimised versions.
 
 
 How to play VGM files direct from your webpage
@@ -68,6 +68,12 @@ I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is qui
 
 History:
 ========
+
+0.26 14/4/02
+============
+
++ Added MAME YM2151 FM core thanks again to BlackAura
++ Fixed credits in About box
 
 0.25 8/4/02
 ===========
