@@ -1,0 +1,269 @@
+//Microsoft Developer Studio generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+DOWNLOADDIALOGUE DIALOG DISCARDABLE  28, 10, 99, 34
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION
+CAPTION "Downloading file..."
+FONT 8, "Verdana"
+BEGIN
+    CONTROL         "Downloading\nVGM music file...\nplease wait",IDC_STATIC,
+                    "Static",SS_LEFTNOWORDWRAP | SS_SUNKEN,2,2,95,30
+END
+
+FILEINFODIALOGUE DIALOG DISCARDABLE  0, 0, 298, 145
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "VGM file & GD3 tag information"
+FONT 8, "Verdana"
+BEGIN
+    DEFPUSHBUTTON   "&OK",IDOK,244,129,52,14
+    GROUPBOX        "Track",308,2,0,145,39
+    LTEXT           "&Title",300,7,10,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebTitle,40,10,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Author",301,7,23,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebAuthor,40,23,102,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Game",309,2,40,145,52
+    LTEXT           "Na&me",302,7,49,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebName,40,49,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&System",303,7,62,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebSystem,40,62,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Date",304,7,75,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebDate,40,75,102,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Language",IDC_STATIC,2,93,52,34
+    CONTROL         "&English",rbEnglish,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,7,104,39,8
+    CONTROL         "&Japanese",rbJapanese,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,7,114,43,8
+    GROUPBOX        "VGM file",IDC_STATIC,151,0,145,126
+    LTEXT           "&Filename",IDC_STATIC,155,10,32,12,SS_CENTERIMAGE | NOT 
+                    WS_GROUP
+    EDITTEXT        ebFilename,189,10,102,12,ES_AUTOHSCROLL | ES_READONLY
+    CONTROL         "&Creator",305,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_CENTERIMAGE,155,23,32,12
+    EDITTEXT        ebCreator,189,23,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Version",306,155,36,32,12,SS_CENTERIMAGE
+    EDITTEXT        ebVersion,189,36,23,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Audio",307,217,36,19,12,SS_CENTERIMAGE
+    CHECKBOX        "PSG",rbPSG,239,36,28,12,NOT WS_TABSTOP
+    CHECKBOX        "FM",rbFM,270,36,22,12,NOT WS_TABSTOP
+    LTEXT           "Si&ze",IDC_STATIC,155,49,32,12,SS_CENTERIMAGE
+    EDITTEXT        ebSize,189,49,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Length",IDC_STATIC,155,62,32,12,SS_CENTERIMAGE
+    EDITTEXT        ebLength,189,62,102,12,ES_AUTOHSCROLL | ES_READONLY
+    CONTROL         "&Notes:",IDC_STATIC,"Static",SS_SIMPLE,155,74,32,8
+    EDITTEXT        ebNotes,155,83,137,38,ES_MULTILINE | ES_READONLY | 
+                    WS_VSCROLL
+    PUSHBUTTON      "smspower.org/music",btnURL,62,110,85,14
+    PUSHBUTTON      "Configure &plugin...",btnConfigure,62,126,85,14
+    PUSHBUTTON      "View GD3 in &browser",btnUnicodeText,62,95,85,14
+END
+
+CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 231, 212
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "VGM plugin configuration"
+FONT 8, "Verdana"
+BEGIN
+    DEFPUSHBUTTON   "&OK",IDOK,177,196,52,14
+    GROUPBOX        "Looping",IDC_STATIC,2,0,131,25
+    LTEXT           "&Repeat looped section",IDC_STATIC,6,11,73,8,NOT 
+                    WS_GROUP
+    EDITTEXT        ebLoopCount,80,9,27,12,ES_NUMBER
+    LTEXT           "times",IDC_STATIC,109,11,21,8,NOT WS_GROUP
+    GROUPBOX        "Channel muting",IDC_STATIC,2,27,131,140
+    CTEXT           "Note: only affects the current track; output buffer makes it non-immediate.",
+                    IDC_STATIC,4,38,126,17,NOT WS_GROUP
+    GROUPBOX        "PSG",gbPSG,6,56,123,33
+    CONTROL         "&Tone channels:",cbPSGToneAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,66,61,8
+    CONTROL         "1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,76,
+                    16,8
+    CONTROL         "2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,76,
+                    16,8
+    CONTROL         "3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,76,
+                    16,8
+    LTEXT           "&Percussion:",lblPSGPerc,75,66,39,8,SS_CENTERIMAGE
+    CONTROL         "Noise",cbTone4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
+                    76,38,8
+    GROUPBOX        "YM2413",gbYM2413,6,90,123,73
+    CONTROL         "To&ne channels:",cbFMToneAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,11,101,61,8
+    CONTROL         "1",cbFM1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,111,
+                    16,8
+    CONTROL         "2",cbFM2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,111,
+                    16,8
+    CONTROL         "3",cbFM3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,111,
+                    16,8
+    CONTROL         "4",cbFM4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,121,
+                    16,8
+    CONTROL         "5",cbFM5,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,121,
+                    16,8
+    CONTROL         "6",cbFM6,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,121,
+                    16,8
+    LTEXT           "Extra tone chs:",lblExtraTone,11,131,51,8,
+                    SS_CENTERIMAGE
+    CONTROL         "7",cbFM7,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,141,
+                    16,8
+    CONTROL         "8",cbFM8,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,141,
+                    16,8
+    CONTROL         "9",cbFM9,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,141,
+                    16,8
+    LTEXT           "(if no percussion)",lblExtraToneNote,11,151,58,8,
+                    SS_CENTERIMAGE
+    CONTROL         "Per&cussion:",cbFMPercAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,101,50,8
+    CONTROL         "Hi-hat",cbFM10,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
+                    111,33,8
+    CONTROL         "Cymbal",cbFM11,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
+                    121,36,8
+    CONTROL         "Tom-tom",cbFM12,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    75,131,46,8
+    CONTROL         "Snare drum",cbFM13,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,75,141,51,8
+    CONTROL         "Bass drum",cbFM14,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    75,151,51,8
+    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,168,131,42
+    CONTROL         "Use &MiniBrowser to display HTML",cbUseMB,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,179,122,8
+    CONTROL         "Auto-display &GD3 in MB/browser",cbAutoMB,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,189,122,8
+    GROUPBOX        "Playback rate",IDC_STATIC,136,0,91,74
+    CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,141,12,62,8
+    CONTROL         "&50Hz",rbRate50,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,141,22,32,8
+    CONTROL         "&60Hz",rbRate60,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,141,32,32,8
+    CONTROL         "Ot&her:",rbRateOther,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,141,42,37,8
+    EDITTEXT        ebPlaybackRate,178,40,22,12,ES_AUTOHSCROLL | ES_NUMBER | 
+                    WS_GROUP
+    LTEXT           "Hz",IDC_STATIC,202,42,9,10,NOT WS_GROUP
+    CTEXT           "Note: takes effect on the next track start",IDC_STATIC,
+                    141,53,80,18,NOT WS_GROUP
+    GROUPBOX        "Track title &display",IDC_STATIC,136,75,91,92
+    EDITTEXT        ebTrackTitle,141,86,81,12,ES_AUTOHSCROLL
+    LTEXT           "%t = Track title*\n%a = Track author*\n%g = Game name*\n%d = Game release date\n%s = System name*\n%c = File creator\n* use %?j for\n   Japanese text",
+                    IDC_STATIC,141,99,84,64,NOT WS_GROUP
+    ICON            "MAINICON",IDC_STATIC,141,190,20,20
+    CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,199,122,8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    "DOWNLOADDIALOGUE", DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 97
+        TOPMARGIN, 2
+        BOTTOMMARGIN, 32
+    END
+
+    "FILEINFODIALOGUE", DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 296
+        VERTGUIDE, 7
+        VERTGUIDE, 40
+        VERTGUIDE, 147
+        VERTGUIDE, 155
+        VERTGUIDE, 189
+        BOTTOMMARGIN, 143
+    END
+
+    "CONFIGDIALOGUE", DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 229
+        VERTGUIDE, 6
+        VERTGUIDE, 11
+        VERTGUIDE, 75
+        VERTGUIDE, 133
+        VERTGUIDE, 136
+        VERTGUIDE, 141
+        BOTTOMMARGIN, 210
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+MAINICON                ICON    DISCARDABLE     "mainicon.ico"
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE DISCARDABLE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // Neutral resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

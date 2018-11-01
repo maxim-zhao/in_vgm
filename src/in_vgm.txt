@@ -1,0 +1,253 @@
+VGM input plugin 0.22
+=====================
+
+This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
+
+To use: put in_vgm in Winamp's plugins\ folder, and restart Winamp.
+Load .vgm or .vgz files in Winamp; go to the "File types" preferences page to associate these extensions:
+
+1. Open the Preferences dialogue (press Ctrl+P, or right-click and choose Options -> Preferences...)
+2. Choose "File types" from the tree on the left (it's the second item unless Winamp has changed since I wrote this)
+3. Make sure "vgm" and "vgz" are selected in the "Associated extensions" list (if they aren't in the list it's because you have another buggy plugin installed)
+
+Be sure to check out the file info and plugin configuration dialogues.
+
+
+Actually asked questions
+========================
+
+> y 
+> doesnt the winamp show vgms as associted files? i always have to select .vgm 
+> .vgz from the drop down menu.
+
+This is a bug in Winamp. Look at any listed type with more than one extension, for example the MPEG audio plugin (*.mp3;*.mp2;*.mp1). Now see if it'll list all three of those file types - it won't, until you choose it from the list. However, it will list MP3s as they're first in the list; so, I've put VGZ first in my list.
+
+> FM music is not based on SINE waves, is it?!
+
+Yes, it is. "Frequency modulation" means using one sine wave to change the frequency of another, thereby producing quite complex waveforms from two simple sine waves, a Good Thing when it comes to making cheap sound chips.
+
+> The latest VGM plugin is much slower on my p133. The last one works fine, but with the new one the songs stops and then continues after a second all the time. Why? 
+
+Because FM emulation is a lot more complicated than PSG emulation, so it takes more time (see the benchmarks below). You might like to get VGMTool to optimise any VGMs with unnecessary chip data in them, or possibly re-download the files if they've been updated with optimised versions.
+
+
+Benchmark
+=========
+
+If either the FM or PSG clock rate is non-zero, that chip will be emulated, even if it is not used.
+
+Files used: WB3 mouse-man music for FM, Green Hill for PSG. CPU: mobile PIII @ 500MHz.
+
+File type           Typical CPU usage (WinTop in Win98)
+
+FM only              9.6-10.8%
+FM with silent PSG  13.1-14.2%
+PSG only             2.8- 3.5%
+PSG with silent FM  11.4-12.5%
+
+So obviously it's better not to emulate an unused chip... it's OK to have data in the file for an unused chip, it'll be ignored if the chip speed is zero.
+
+
+How to play VGM files direct from your webpage
+==============================================
+
+You can make it so people can click on a link and have a VGM played in Winamp the same way as you can do it for MP3s...
+
+1. Make a playlist file for the file(s) you want, listed as full URLs
+2. Link to that
+
+Winamp sets it up so IE will download and open the playlist without prompting the user; the plugin then downloads the file itself and plays it. I think Netscape does a similar thing, because most servers have the MIME types properly set up for playlist files.
+
+
+Known issues:
+=============
+
+You can choose to loop a VGM a lot of times. However, Winamp doesn't like that...
+- the playlist will either display the wrong track length or nothing, if it is over about 500 minutes
+- some output plugins don't like it - eg. in Winamp 2.77, the waveOut plugin will display the wrong time while playing past 202:53
+- very high values will make the main window/posbar length wrong too
+
+*the following KIs relate to an old version, I will update them some time soon*
+
+On my computer, turning on the equaliser will make it use 6 times as much CPU; the EQ presumably does not like square waves.
+
+I tried a DSP plugin, "Dee". It crashes Winamp whenever you turn on the 3D thing, I have no idea why. So don't do that.
+
+I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is quite cool.
+
+
+History:
+========
+
+0.22 12/2/02
+============
+
++ Total/loop lengths in file info box are now to 1 decimal place, rather than rounded down to the nearest second
++ Added some protection for truncated (broken) files
++ Looked into why VGZ files don't show up on the Open dialogue until you select them from the dropdown list... it's a Winamp bug, see the AAQ above.
++ Worked on the internet download code a bit... note that when you close the minibrowser, it tends to switch off IE's offline mode :(
+
+0.21 6/1/02
+===========
+
++ Added HTML display of GD3 information, hopefully allowing Japanese text to be displayed on all systems
++ Fixed a memory leak
++ Loads of other stuff
++ Never actually got around to releasing this one
+
+0.2 20/11/01
+============
+
++ Ported the plugin to C
+  + so now the YM2413 is emulated via EMU2413
+  + ported my SN76489 emulator
+  + ported playback engine, including variable-speed playback and seeking
+  + Re-implemented file downloader using URLMon.dll (makes code simpler)
++ Implemented loop skipping when seeking, so you can seek through a file looped a lot of times much faster than before
++ Change title formatting - now you can display Japanese text too (if supported).
++ Fixed a bug when stopping/skipping just before the end of the track
++ Moved settings to plugin.ini in the plugins folder. You can delete the section from winamp.ini if you like. You'll have to re-set your preferences if you don't like my defaults.
++ Changed FM/PSG mixing so the Japanese BIOS music sounds better... if anyone can send me a recording (from a real SMS with an FM chip) of the Japanese BIOS music (or any game using both the PSG and FM chip) I'd be grateful.
++ Added some stuff to the file info dialogue
++ Added YM2413 channel muting
++ Updated to EMU2413 0.51, with modifications
+
+0.12 1/10/01
+============
+
++ Fixed typo in About box (0.1 -> 1.0)
++ Added user-configurable playback rate - now you can choose to play music at the speed you remember.
++ Made it so PSG flip-flops don't get stuck at zero frequency (made it sound strange sometimes)
++ Changed config dialogue to Verdana font (file info already was)
++ Added useless icon to config dialogue. If anyone wants to design a logo I can show it this way :)
++ Fixed tab order in file info dialogue
++ Added SMS Power URL button to file info dialogue
++ Fixed a bug caused by the flip-flop fix
++ Cleaned up source code a lot
++ DLL is now compressed as well as WinAligned
++ Ported EMU2413 to Delphi... but it doesn't work yet
++ Removed the above flip-flop thing because it broke voices...
+    On a real SMS, quite often a channel's frequency is set to 0 without turning it off. On my simulated PSG that leaves a permanent DC offset; on a real SMS that offset decays in a fraction of a second. The effect of this is to make the wave appear to "move" up and down; it has a small effect on the sound, as speakers operate better without a DC offset. Unfortunately the same effect is used for voices, so when I activate the code to remove the offset, voices stop working. To see this in effect, try "Out Run 3D - Magical Sound Shower" or "Micro Machines - Title Screen", among others.
++ Added HTTP downloading via WinINet.dll... which is part of IE, but should be on almost every PC
+
+0.11 4/9/01
+===========
+
++ Fixed a bug in the PSG tone emulation that caused problems with Micro Machines.
++ Relaxed version checking, now it only insists on VGM and GD3 1.xx and still offers to play other files.
+
+0.1 3/9/01
+==========
+
++ Added a button to set MIME types in the registry. If a server is set up to descibe VGM/VGZ files as "Content-Type: audio/vgm" and these values are set, Netscape will be able to play VGM files from URLs. IE doesn't need it, it ignores the MIME type when it sees the file association with Winamp and will open the file properly (after a prompt).
++ VGM is verging on going public, so it's reset to 1.00 and the plugin gets out of alpha
+
+Alpha 13 26/8/01
+================
+
++ Fixed a worse bug in the previous bugfix :P
++ Added track title formatting stuff
++ Increased play thread priority to stop skipping when the CPU is busy
+
+Alpha 12a 25/8/01
+=================
+
++ Fixed looping bug
+
+Alpha 12 25/8/01
+================
+
++ For some reason the GZip code limited the path to 79 characters, causing "Not an AYM file" errors on files with long paths. I fixed it.
++ Switched to VGM instead of AYM. ****DELETE IN_AYM.DLL****
++ Added configuration dialogue; the tone channel checkboxes have moved there from the file info box
++ Added looping support
++ Updated to VGM 1.12
++ Added loop configuration to config dialogue, saving the loop count to winamp.ini
++ Added a button in the file info dialogue for the config dialogue, so you can get at it quicker
++ Setting the loop to a high value allows me to test seeking speed. 400 minutes in 8 seconds is 3000x...
+
+Alpha 11 20/8/01
+================
+
++ Synchronous noise tested against a real system. Apart from the different sound due to the real system's imperfections, it works properly now.
++ Updated to use the GD3 tag location properly. Decrease the offset by 0x14 in existing files for it to work. I'm not going to code for it to handle both, sorry...
++ Volumes use values measured from a real SMS. I may switch to logarithmic values, or maybe have an option eventually?
++ Speed modifying code added. If you want to play back at 120Hz or 13.47Hz, you can. Except you can't, I commented that code out. Thanks to Bock for pointing out how to do it.
+
+Alpha 10 19/8/01
+================
+
++ It now looks for and uses the .ayz file extension. It actually doesn't matter which extension you give a file, compressed or not.
++ AYM 1.11, plus you can now choose to try and play versions not in the supported range (1.08-1.11).
+
+Alpha 9 19/8/01
+===============
+
++ Switched to AYM instead of DYM
++ Invalid files were displaying a track length before, they don't now
++ Added GZip support. There are problems with the .aym.gz extension - Winamp won't automatically pass it to the plugin, because it sees the extension as .gz. That has been worked around. Windows won't associate .aym.gz files with Winamp, because it too sees them just as .gz files. I don't see any way around this. GZip also ballooned the DLL size a bit... WinAligning makes it seem even bigger. (Was: ~42KB -> 64KB aftar aligning, now it's ~75KB -> 92KB after aligning.)
+
+Alpha 8a 17/8/01
+================
+
++ Fixed problem with DirectSound output plugin
++ Fixed EQ problem
+
+
+Alpha 8 17/8/01
+===============
+
++ Fixed an error which cause all sound to be half the correct frequency (1 octave lower than it should)
++ That also fixed voices
+
+
+Alpha 7 16/8/01
+===============
+
++ DYM 1.10, with GG stereo port writes. It's untested because there is no test stream yet :)
++ Improved method of muting channels, although as far as the sound is concerned it's the same.
++ Tweaked volume so the (theoretical) maximum is now 98% of the available volume. It seems this is the "right" thing to do...
++ Since compatibility hasn't broken since DYM 1.08 (it uses default values for older versions), the version checking now accepts a range of values.
+
+
+Alpha 6 15/8/01
+===============
+
++ DYM 1.09, with the PSG clock rate in the header. That is all.
+
+
+Alpha 5 15/8/01
+===============
+
++ Fixed up the channel disabling, although it's still in the info box (it'll probably end up somewhere else). Before it took until the next volume change on that channel to mute, now it's only the output plugin's buffer length that stops it being instant. Noise can be disabled too. Unmuting still needs a volume change though.
++ DYM 1.08 already...
++ Added noise emulation according to the MAME/Hiro-shi method. It's terrible, completely inaccurate.
++ Dave's Sonic DYM highlighted a problem - out of laziness, I was not buffering the file myself, hoping that Windows would do enough. So, every byte read was actually using quite a lot of CPU. I've now got a 32KB buffer - voices work now (almost... I'm not sure what the problem is now, it could be an issue with DYM itself), and seeking is incredibly fast! It took 6 seconds to seek 1 minute into the GG Shinobi DYM before, now it's instant! Seeking nearly 3 minutes into the Sonic DYM takes a fraction of a second. And now, CPU use is way down. It depends on the DYM file, but it's typically around 4%, a quarter what alpha 4 used :)
++ I switched to my determined PSG clock speed, but it seems to cause some problems (with voice) if it's not what the DYM creator used. DYM 1.09 addition?
++ WinAligned DLL... it's 64KB instead of 45, but it now executes from the disk cache on Win98 and higher.
+
+
+Alpha 4 13/8/01
+===============
+
++ Added proper file info box, without invoking Delphi's RTTI filesize overhead. It's a lot more hassle :( but it's kept the plugin at 44KB.
++ Rewrote tone generators to act EXACTLY like the hardware (counters and flip-flops). The last version used another method which I thought up based on maths and stuff like that, which sounded OK until the sound started using vibrato, in which case it sounded terrible. Now it sounds perfect (except for emulation of the "fading" flip-flops...). As an added bonus it seems to be a bit faster too, the decoding thread uses about 16.2% CPU for me now.
++ Added VERY quick and dirty noise emulation. It's just volume*random(), and sounds crappy. It's better than nothing though. It also accounts for about 25% of the CPU use...
++ Added DYM version checking, because some people were trying to play old DYM files and crashing Winamp... :)
+
+
+Alphas 1 to 3
+=============
+
+I didn't record what I did then...
+
+...but I ought to thank Jason for help translating the C.
+    while (! *((int *)b) )
+is quite confusing, I think
+    while integer(b^)=0 do
+is much more readable :) (translation: while what pointer b points to, typecast as an integer, is zero, do...)
+
+
+Maxim
+http://mwos.cjb.net
+http://www.smspower.org
