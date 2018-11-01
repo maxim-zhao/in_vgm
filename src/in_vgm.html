@@ -8,119 +8,22 @@ function showhistory()
   return false;
 }
 </script>
-<style>
-
-body {
-  background: #006699;
-  color: white;
-  font-family: lucida grande, garamond, verdana, henlvetica, arial, sans-serif;
-  font-size: small;
-  width:40em;
-  padding:2em;
-  margin-left:4em;
-  border:1px solid black;
-}
-
-h1 {
-  background:#eee;
-  color:black;
-  padding:2em;
-}
-
-h2 {
-  padding-left:0.5em;
-  background:#00334c;
-}
-
-h3 {
-  padding-left:0.5em;
-  background:#004c72;
-}
-
-h4 {
-  padding-left:0.5em;
-  border-top:2px solid #004c72;
-  border-bottom:2px solid #004c72;
-}
-
-a {
-  color: white;
-  text-decoration: underline;
-  font-weight: bold;
-}
-
-.key {
-  color:black;
-  border: 2px outset #ddc;
-  background: #ddc;
-  padding-left:0.2em;
-  padding-right:0.2em;
-  white-space: nowrap;
-}
-
-.menu {
-  color:black;
-  background: #eee;
-  border-left: 2px outset #eee;
-  border-right: 2px outset #eee;
-  border-top: 1px dotted #eee;
-  border-bottom: 1px dotted #eee;
-  padding-left:1em;
-  padding-right:1em;
-  white-space: nowrap;
-}
-
-.button {
-  color:black;
-  border: 2px outset #ccc;
-  background: #ccc;
-  padding-left:0.2em;
-  padding-right:0.2em;
-  white-space: nowrap;
-}
-
-fieldset {
-  border: 2px groove #006699;
-  margin-top:1em;
-  margin-left:3em;
-  margin-right:3em;
-  padding: 0.5em;
-}
-
-legend {
-}
-
-tt {
-  border:1px solid black;
-  color:black;
-  background:#eee;
-  font-size:medium;
-  white-space: nowrap;
-  padding-left:0.2em;
-  padding-right:0.2em;
-}
-
-div.control {
-  margin-top:1em;
-  margin-bottom:0.5em;
-}
-
-div.quote {
-  border: 1px solid #555;
-  background: #eee;
-  color: #555;
-  padding: 0.5em;
-  margin-top: 1em;
-  margin-bottom: 1em;
-  font-style:italic;
-}
-
-li {
-  margin-top:0.5em;
-  margin-bottom:0.5em;
-}
-
-</style>
+<style> body { background: #006699; color: white; font-family: lucida grande, garamond, verdana, henlvetica, arial, sans-serif; font-size: small; width:40em; padding:2em; margin-left:4em; border:1px solid black; }
+	h1 { background:#eee; color:black; padding:2em; }
+	h2 { padding-left:0.5em; background:#00334c; }
+	h3 { padding-left:0.5em; background:#004c72; }
+	h4 { padding-left:0.5em; border-top:2px solid #004c72; border-bottom:2px solid #004c72; }
+	a { color: white; text-decoration: underline; font-weight: bold; }
+	.key { color:black; border: 2px outset #ddc; background: #ddc; padding-left:0.2em; padding-right:0.2em; white-space: nowrap; }
+	.menu { color:black; background: #eee; border-left: 2px outset #eee; border-right: 2px outset #eee; border-top: 1px dotted #eee; border-bottom: 1px dotted #eee; padding-left:1em; padding-right:1em; white-space: nowrap; }
+	.button { color:black; border: 2px outset #ccc; background: #ccc; padding-left:0.2em; padding-right:0.2em; white-space: nowrap; }
+	fieldset { border: 2px groove #006699; margin-top:1em; margin-left:3em; margin-right:3em; padding: 0.5em; }
+	legend { }
+	tt { border:1px solid black; color:black; background:#eee; font-size:medium; white-space: nowrap; padding-left:0.2em; padding-right:0.2em; }
+	div.control { margin-top:1em; margin-bottom:0.5em; }
+	div.quote { border: 1px solid #555; background: #eee; color: #555; padding: 0.5em; margin-top: 1em; margin-bottom: 1em; font-style:italic; }
+	li { margin-top:0.5em; margin-bottom:0.5em; }
+	</style>
 </head>
 <body>
 <h1>VGM input plugin 0.35</h1>
@@ -128,15 +31,15 @@ li {
 <h2>Table of Contents</h2>
 
 <ul>
-<li><a href=#problems>Problems</a></li>
-<li><a href=#introduction>Introduction</a></li>
-<li><a href=#credits>Credits</a></li>
-<li><a href=#dialogueboxes>Dialogue Boxes</a></li>
-<li><a href=#aaq>Actually Asked Questions</a></li>
-<li><a href=#howtoplay>How to play VGM files direct from your webpage</a></li>
-<li><a href=#knownissues>Known issues</a></li>
-<li><a href=#history>History</a></li>
-<li><a href=#links>Links</a></li>
+<li><a href="#problems">Problems</a>
+<li><a href="#introduction">Introduction</a>
+<li><a href="#credits">Credits</a>
+<li><a href="#dialogueboxes">Dialogue Boxes</a>
+<li><a href="#aaq">Actually Asked Questions</a>
+<li><a href="#howtoplay">How to play VGM files direct from your webpage</a>
+<li><a href="#knownissues">Known issues</a>
+<li><a href="#history">History</a>
+<li><a href="#links">Links</a></li>
 </ul>
 
 <a name="problems"></a>
@@ -150,24 +53,26 @@ find them easily.
 <p>
 If you have in_gym then disable its VGM handling. It is weird.
 <p>
-Look at the 50/60Hz options in the config screen - maybe you're used to 50Hz music?
+Look at the 50/60Hz options in the config screen - 
+  maybe you're used to 50Hz music?</p>
+               
 <li>Anything else
 <p>
-Please contact me!
+Please contact me!</p></li>
 </ol>
 
 <a name="introduction"></a>
 <h2>Introduction</h2>
 
-This is a <a href=http://www.winamp.com>Winamp</a> (2.xx and 5.xx) plugin for playing VGM files. VGM is a
+This is a <a href="http://www.winamp.com">Winamp</a> (2.xx and 5.xx) plugin for playing VGM files. VGM is a
 standard for logging of SN76489/SN76496, YM2413, YM2612 and YM2151
 music chip data, originated by Dave, allowing various systems' games'
-music to be stored. See <a href=http://www.smspower.org/music>http://www.smspower.org/music</a> for more
+music to be stored. See <a href="http://www.smspower.org/music">http://www.smspower.org/music</a> for more
 information, and to download VGM music files.
 <p>
 Open this URL in Winamp to hear a demo:
 <p>
-<a href=http://www.smspower.org/music/vgm/demo/Golvellius.m3u>http://www.smspower.org/music/vgm/demo/Golvellius.m3u</a>
+<a href="http://www.smspower.org/music/vgm/demo/Golvellius.m3u">http://www.smspower.org/music/vgm/demo/Golvellius.m3u</a>
 <p>
 To use: put in_vgm.dll in Winamp's <tt>plugins\</tt> folder (usually <tt>C:\Program Files\Winamp\plugins\</tt>), and restart Winamp. If
 you got the self-installing version then it should already be working.
@@ -176,12 +81,12 @@ Load .vgm or .vgz files in Winamp; go to the "File types" preferences
 page to associate these extensions:
 <ol>
 <li>Open the Preferences dialogue box (press <span class=key>Ctrl+P</span>, or right-click and
-   choose Options -> Preferences...)
+   choose Options -&gt; Preferences...)
 <li>Choose "File types" from the tree on the left (it's the second item
    unless Winamp has changed since I wrote this)
-<li>Make sure "vgm" and "vgz" are selected in the "Associated extensions"
-   list (if they aren't in the list it's because you have another buggy
-   plugin installed)
+<li>Make sure "vgm" and "vgz" are selected in the 
+  "Associated extensions" list (if they aren't in the list it's because you have 
+  another buggy plugin installed)</li>
 </ol>
 Be sure to check out the file info and plugin configuration dialogues.
 
@@ -189,18 +94,18 @@ Be sure to check out the file info and plugin configuration dialogues.
 <h2>Credits</h2>
 <ul>
 <li>The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki, which is
-part of <a href=http://dsa.sakura.ne.jp/index.php?MSXplug>MSXplug</a>.
+part of <a href="http://dsa.sakura.ne.jp/index.php?MSXplug">MSXplug</a>.
 <li>The PSG engine is by me.
-<li>The YM2612 engine is from <a href=http://gens.consolemul.com>Gens by
+<li>The YM2612 engine is from <a href="http://gens.consolemul.com">Gens by
 Stephane Dallongeville</a>.
-<li>The YM2151 engine is from <a href=http://www.mame.net>MAME</a>
+<li>The YM2151 engine is from <a href="http://www.mame.net">MAME</a>
 and was added by BlackAura.
-<li><a href=http://www.zlib.org>zlib</a> decompression is by Jean-loup
+<li><a href="http://www.zlib.org">zlib</a> decompression is by Jean-loup
 Gailly and Mark Adler.
-<li>Replay Gain data is stored in an <a href=http://www.sqlite.org/>SQLite</a> 
+<li>Replay Gain data is stored in an <a href="http://www.sqlite.org">SQLite</a> 
 database, thanks to D. Richard Hipp <i>et al</i>.
 <li>VGM7z support uses the 7-zip and LZMA SDK from 
-<a href=http://www.7-zip.org/>7-Zip</a>, by Igor Pavlov.
+<a href="http://www.7-zip.org">7-Zip</a>, by Igor Pavlov.</li>
 </ul>
 
 <a name="dialogueboxes"></a>
@@ -221,7 +126,7 @@ double-click on the track title; or right-click and choose
 <span class=menu>File info...</span>.
 <li>In the media library, select some files and press
 <span class=key>Alt+3</span>; or right-click and choose
-<span class=menu>View file info...</span>.
+<span class=menu>View file info...</span>.</li>
 </ul>
 This shows you information about the file and, if it has a GD3
 information tag, it shows you information from there too. It's similar
@@ -258,12 +163,11 @@ To open:
 <li>Open the "VGM file &amp; GD3 tag information" dialogue box; then press the
   <span class=button>Configure plugin...</span> button or press
   <span class=key>Alt+P</span>.
-<li>Or open the Winamp Preferences dialogue box (Right-click ->
-  <span class=menu>Options</span> -> <span class=menu>Preferences...</span>;
+<li>Or open the Winamp Preferences dialogue box (Right-click -&gt;
+  <span class=menu>Options</span> -&gt; <span class=menu>Preferences...</span>;
   or press <span class=key>Ctrl+P</span>), choose the
-  Plug-ins -> Input page, then double-click on the "VGM input plugin
-  v0.xx [in_vgm.dll]" item, or select it and click on the <span class=button>Configure</span>
-  button.
+  Plug-ins -&gt; Input page, then double-click on the "VGM input plugin
+  v0.xx [in_vgm.dll]" item, or select it and click on the <span class=button>Configure</span> button.</li>
 </ul>
 
 <h4>Playback tab</h4>
@@ -301,8 +205,8 @@ To open:
     slowly or quickly. Extreme values and fractional values are not
     allowed. Note that seeking is buggy with unusual rates.
 <p>
-  The effect will only be heard when you restart the track, or when the
-  next track starts.
+  The effect will only be heard when you restart the 
+track, or when the next track starts.</p>
 </fieldset>
 <fieldset><legend>Volume, muting and panning</legend>
 <div class=control><input type=checkbox>Overdrive</div>
@@ -351,7 +255,7 @@ To open:
     <li>Add a new view to the Media Library
     <li>On the advanced tab, change the query to <tt>TYPE=262144</tt> (or whatever
        number you chose)
-    <li>Refresh your Media Library from the <span class=button>Library</span> button.
+    <li>Refresh your Media Library from the <span class=button>Library</span> button.</li>
 </ol>
     Note that Winamp does not define meanings for values other than 0
     (audio) and 1 (video). It might in later versions, so try to use a
@@ -371,9 +275,9 @@ To open:
     If checked, when auto-displaying GD3 tags, Now Playing will be
     opened if it is closed.
 <p>
-  Note that in older versions of Winamp, the MiniBrowser is the
-  equivalent of Now Playing. Also, in versions of Winamp since 5.22,
-  Now Playing does not support this feature; it may return in later versions.
+  Note that in older versions of Winamp, the MiniBrowser 
+is the equivalent of Now Playing. Also, in versions of Winamp since 5.22, Now 
+Playing does not support this feature; it may return in later versions.</p>
 </fieldset>
 <fieldset><legend>Legacy title formatting</legend>
     Enter text to control what title Winamp shows for the file. Enter
@@ -381,7 +285,7 @@ To open:
     has no GD3 tag then the filename will be used as the title.
     <p>
     Winamp 5's Advanced Title Formatting bypasses this, instead using
-    data from the Media Library. Look for the <b>Title</b> section in the Winamp preferences, and try <tt>[%album% ['['$num(%tracknumber%,2)'] ']- ]%title%[ - %artist%]</tt>
+    data from the Media Library. Look for the <b>Title</b> section in the Winamp preferences, and try <tt>[%album% ['['$num(%tracknumber%,2)'] ']- ]%title%[ - %artist%]</tt></p>
 
 </fieldset>
 
@@ -405,8 +309,8 @@ To open:
   affected channel is overridden.
   <p>
   Press the <span class=button>Centre all</span> button to reset all channels to a centre
-  position, or press the <span class=button>Randomise</span> button to position
-  them according to a random Gaussian distribution.
+  position, or press the <span class=button>Randomise</span> button to position them 
+according to a random Gaussian distribution.</p>
 </fieldset>
 <fieldset><legend>Emulation</legend>
 <div class=control><input type=checkbox>Smooth PSG vol curve</div>
@@ -545,12 +449,12 @@ You can make it so people can click on a link and have a VGM played in
 Winamp the same way as you can do it for MP3s...
 <ol>
 <li>Make a playlist file for the file(s) you want, listed as full URLs
-<li>Link to that
+<li>Link to that</li>
 </ol>
 Winamp will try to make it so the playlist file is downloaded and
 opened by the browser with as little prompting as possible, and in_vgm
 hooks up with Winamp's downloading routines to play the files
-themselves. <a href=http://www.smspower.org/music/vgm/demo/Golvellius.m3u>Try
+themselves. <a href="http://www.smspower.org/music/vgm/demo/Golvellius.m3u">Try
 this link for an example.</a>
 
 <a name="knownissues"></a>
@@ -567,14 +471,31 @@ process square waves well. I recommend you turn it off if you can.
 <li>I tried a DSP plugin, "Dee". It crashed Winamp whenever you turn on the
 3D thing, I have no idea why. So don't do that.
 
-<li>When you apply fake panning to PSG/YM2413 channels, it is hard to
-make the apparent volume stay the same. I am trying to use "equal power
-panning laws" but I'm not sure I've got it quite right yet, especially since
-it seems nobody agrees on what's the right way to do it.
+<li>When you apply fake panning to PSG/YM2413 channels, 
+  it is hard to make the apparent volume stay the same. I am trying to use 
+  "equal power panning laws" but I'm not sure I've got it quite right yet, 
+  especially since it seems nobody agrees on what's the right way to do it.</li>
 </ul>
 
 <a name="history"></a>
 <h2>History</h2>
+
+<h3>0.36 beta</h3>
+<ul>
+<li>Added optional MAME-based YM2612 engine
+<li>Modified MAME engine to support separate DAC muting
+<li>Added support for the global playback thread priority setting
+<li>Added unscientific multi-author string reformatter to standardise things
+<li>Added support for "%family%" metadata (good for Winamp install)
+<li>Changed some of the icons to ones from the free Silk set
+<li>Rearranged some "legacy" settings
+<li>Added more tag fixing options
+<li>Removed PSG volume curve setting UI (functionality was removed already)
+</ul>
+
+<h4 id=histlink><a href="#oldhistory" onClick="javascript:showhistory();">Click to show older entries</a></h4>
+<div id=oldhistory style="DISPLAY:none">
+<a name="oldhistory"></a>
 
 <h3>0.35 24/8/07</h3>
 <ul>
@@ -588,7 +509,7 @@ it seems nobody agrees on what's the right way to do it.
 <li>Unicode tag support for Winamp 5.25, while still supporting old Winamps
 <li>All GD3 tags are now internally trimmed of leading/trailing whitespace to stop badly tagged files showing up strangely in the ML
 <li>Feature death: Winamp has killed plugin control of Now Playing. You can
-  try <a href=http://forums.winamp.com/showthread.php?threadid=250008>this
+  try <a href="http://forums.winamp.com/showthread.php?threadid=250008">this
   plugin</a> but it doesn't work for me.
 <li>Better support for out-of-spec GD3 dates
 <li>Changed dialogues to use Tahoma font to get its better Unicode support
@@ -606,18 +527,15 @@ it seems nobody agrees on what's the right way to do it.
 <li>Improved HTML information display
 <li>Added fake stereo randomisation (off by default)
 <li>Fixed Title Casing for legacy title formatting
-<li>Fixed bug with port numbers in URLs in URL handler
+<li>Fixed bug with port numbers in URLs in URL handler</li>
 </ul>
-<h4 id=histlink><a href="#oldhistory" onClick="javascript:showhistory();">Click to show older entries</a></h4>
-<div id=oldhistory style="display:none;">
-<a name="oldhistory"></a>
 <h3>0.34 7/12/05</h3>
 <ul>
 <li>Added high-pass filter for PCM to Gens sound core (by Blargg)
 <li>Pausing after non-looped tracks was broken in 0.33
 <li>This also broke skipping with short tracks
 <li>Fixed a couple of typos in the readme
-<li>Improved HTML information display
+<li>Improved HTML information display</li>
 </ul>
 <h3>0.33 20/11/05</h3>
 <ul>
@@ -632,7 +550,7 @@ it seems nobody agrees on what's the right way to do it.
 <li>Added tag caching for tag queries, to speed up media library tag
   retrieval
 <li>Changed to NSIS installer and packed in another demo VGM
-<li>Added YM2413 panning support
+<li>Added YM2413 panning support</li>
 </ul>
 <h3>0.32 30/10/05</h3>
 <ul>
@@ -657,13 +575,14 @@ it seems nobody agrees on what's the right way to do it.
 <li>Improved time formatting
 <li>Added YM2413 panning support
 <li>Added panning Gaussian randomisation
-<li>Improved emulation of non-Sega variant SN76489 for the Beeb fans
+<li>Improved emulation of non-Sega variant SN76489 for 
+  the Beeb fans</li>
 </ul>
 <h3>0.31 12/12/04</h3>
 <ul>
 <li>Added Media Library extended title support and lots of associated
   options
-<li>And various other stuff too
+<li>And various other stuff too</li>
 </ul>
 <h3>0.30 28/5/03</h3>
 <ul>
@@ -671,13 +590,13 @@ it seems nobody agrees on what's the right way to do it.
 <li>Updated to EMU2413 0.60: "Fixed HH&amp;CYM generator and all voice datas."
 <li>Unupdated back to EMU2413 0.55 - percussion sounds terrible!
 <li>Added support for VGM v1.02 (custom PSG noise feedback)
-<li>Replaced MAME YM2612 core with Gens 2.10
+<li>Replaced MAME YM2612 core with Gens 2.10</li>
 </ul>
 <h3>0.29 31/10/02</h3>
 <ul>
 <li>Added PSG noise boost option
 <li>Added PSG smooth volume curve option
-<li>Fixed bug in GD3 tag display
+<li>Fixed bug in GD3 tag display</li>
 </ul>
 <h3>0.28 12/9/02</h3>
 <ul>
@@ -691,7 +610,7 @@ it seems nobody agrees on what's the right way to do it.
 <li>Volume levels now match better for different chips
 <li>Fixed a typo which caused the YM2162 core not to be closed
 <li>Added some documentation to this file
-<li>Added a Help button which opens this file
+<li>Added a Help button which opens this file</li>
 </ul>
 <h3>0.27 1/5/02</h3>
 <ul>
@@ -701,19 +620,19 @@ it seems nobody agrees on what's the right way to do it.
   checkbox to control it.
 <li>Modified PSG core to produce output similar to FM cores, ie. much
   quieter
-<li>Added Overdrive mode which amplifies the sound to levels similar to a
-  typical MP3 file. It can cause clipping, though.
+<li>Added Overdrive mode which amplifies the sound to 
+  levels similar to a typical MP3 file. It can cause clipping, though.</li>
 </ul>
 <h3>0.26 14/4/02</h3>
 <ul>
 <li>Added MAME YM2151 FM core thanks again to BlackAura
-<li>Fixed credits in About box
+<li>Fixed credits in About box</li>
 </ul>
 <h3>0.25 8/4/02</h3>
 <ul>
 <li>Fixed PSG 2-byte noise write behaviour based on chip tests
 <li>Added MAME 0.36 YM2612 core thanks to BlackAura
-<li>Finally fixed the seek bug
+<li>Finally fixed the seek bug</li>
 </ul>
 <h3>0.24 25/3/02</h3>
 <ul>
@@ -724,7 +643,7 @@ it seems nobody agrees on what's the right way to do it.
   works
 <li>Reverse engineered SMS SN76489 (PSG) feedback network so noise
   pattern is bit-accurate
-<li>Updated to zlib 1.1.4
+<li>Updated to zlib 1.1.4</li>
 </ul>
 <h3>0.23 17/3/02</h3>
 <ul>
@@ -732,7 +651,8 @@ it seems nobody agrees on what's the right way to do it.
   doesn't.
 <li>Improved channel selection, it now remembers it if you stop and re-
   play a track.
-<li>Released early as I had broken the self-installer last time
+<li>Released early as I had broken the self-installer 
+  last time</li>
 </ul>
 <h3>0.22 12/2/02</h3>
 <ul>
@@ -742,8 +662,9 @@ it seems nobody agrees on what's the right way to do it.
 <li>Looked into why VGZ files don't show up on the Open dialogue until
   you select them from the dropdown list... it's a Winamp bug, see the
   AAQ above.
-<li>Worked on the internet download code a bit... note that when you
-  close the minibrowser, it tends to switch off IE's offline mode :(
+<li>Worked on the internet download code a bit... note 
+  that when you close the minibrowser, it tends to switch off IE's offline mode 
+  :(</li>
 </ul>
 <h3>0.21 6/1/02</h3>
 <ul>
@@ -751,7 +672,7 @@ it seems nobody agrees on what's the right way to do it.
   text to be displayed on all systems
 <li>Fixed a memory leak
 <li>Loads of other stuff
-<li>Never actually got around to releasing this one
+<li>Never actually got around to releasing this one</li>
 </ul>
 <h3>0.2 20/11/01</h3>
 <ul>
@@ -761,7 +682,8 @@ it seems nobody agrees on what's the right way to do it.
   <li>ported my SN76489 emulator
   <li>ported playback engine, including variable-speed playback and
     seeking
-  <li>Re-implemented file downloader using URLMon.dll (makes code simpler)
+  <li>Re-implemented file downloader using URLMon.dll 
+    (makes code simpler)</li>
   </ul>
 <li>Implemented loop skipping when seeking, so you can seek through a
   file looped a lot of times much faster than before
@@ -777,11 +699,11 @@ it seems nobody agrees on what's the right way to do it.
   I'd be grateful.
 <li>Added some stuff to the file info dialogue
 <li>Added YM2413 channel muting
-<li>Updated to EMU2413 0.51, with modifications
+<li>Updated to EMU2413 0.51, with modifications</li>
 </ul>
 <h3>0.12 1/10/01</h3>
 <ul>
-<li>Fixed typo in About box (0.1 -> 1.0)
+<li>Fixed typo in About box (0.1 -&gt; 1.0)
 <li>Added user-configurable playback rate - now you can choose to play
   music at the speed you remember.
 <li>Made it so PSG flip-flops don't get stuck at zero frequency (made it
@@ -806,15 +728,15 @@ it seems nobody agrees on what's the right way to do it.
     voices stop working. To see this in effect, try "Out Run 3D -
     Magical Sound Shower" or "Micro Machines - Title Screen", among
     others.
-<li>Added HTTP downloading via WinINet.dll... which is part of IE, but
-  should be on almost every PC
+<li>Added HTTP downloading via WinINet.dll... which is 
+  part of IE, but should be on almost every PC</li>
 </ul>
 <h3>0.11 4/9/01</h3>
 <ul>
 <li>Fixed a bug in the PSG tone emulation that caused problems with Micro
   Machines.
-<li>Relaxed version checking, now it only insists on VGM and GD3 1.xx and
-  still offers to play other files.
+<li>Relaxed version checking, now it only insists on VGM 
+  and GD3 1.xx and still offers to play other files.</li>
 </ul>
 <h3>0.1 3/9/01</h3>
 <ul>
@@ -824,18 +746,19 @@ it seems nobody agrees on what's the right way to do it.
   doesn't need it, it ignores the MIME type when it sees the file
   association with Winamp and will open the file properly (after a
   prompt).
-<li>VGM is verging on going public, so it's reset to 1.00 and the plugin
-  gets out of alpha
+<li>VGM is verging on going public, so it's reset to 1.00 
+  and the plugin gets out of alpha</li>
 </ul>
 <h3>Alpha 13 26/8/01</h3>
 <ul>
 <li>Fixed a worse bug in the previous bugfix :P
 <li>Added track title formatting stuff
-<li>Increased play thread priority to stop skipping when the CPU is busy
+<li>Increased play thread priority to stop skipping when 
+  the CPU is busy</li>
 </ul>
 <h3>Alpha 12a 25/8/01</h3>
 <ul>
-<li>Fixed looping bug
+<li>Fixed looping bug</li>
 </ul>
 <h3>Alpha 12 25/8/01</h3>
 <ul>
@@ -850,8 +773,8 @@ it seems nobody agrees on what's the right way to do it.
   winamp.ini
 <li>Added a button in the file info dialogue for the config dialogue, so
   you can get at it quicker
-<li>Setting the loop to a high value allows me to test seeking speed. 400
-  minutes in 8 seconds is 3000x...
+<li>Setting the loop to a high value allows me to test 
+  seeking speed. 400 minutes in 8 seconds is 3000x...</li>
 </ul>
 <h3>Alpha 11 20/8/01</h3>
 <ul>
@@ -863,40 +786,40 @@ it seems nobody agrees on what's the right way to do it.
   to handle both, sorry...
 <li>Volumes use values measured from a real SMS. I may switch to
   logarithmic values, or maybe have an option eventually?
-<li>Speed modifying code added. If you want to play back at 120Hz or 
-  13.47Hz, you can. Except you can't, I commented that code out. Thanks to
-  Bock for pointing out how to do it.
+<li>Speed modifying code added. If you want to play back 
+  at 120Hz or 13.47Hz, you can. Except you can't, I commented that code out. 
+  Thanks to Bock for pointing out how to do it.</li>
 </ul>
 <h3>Alpha 10 19/8/01</h3>
 <ul>
 <li>It now looks for and uses the .ayz file extension. It actually 
   doesn't matter which extension you give a file, compressed or not.
-<li>AYM 1.11, plus you can now choose to try and play versions not in the
-  supported range (1.08-1.11).
+<li>AYM 1.11, plus you can now choose to try and play 
+  versions not in the supported range (1.08-1.11).</li>
 </ul>
 <h3>Alpha 9 19/8/01</h3>
 <ul>
 <li>Switched to AYM instead of DYM
 <li>Invalid files were displaying a track length before, they don't now
-<li>Added GZip support. There are problems with the .aym.gz extension -
-  Winamp won't automatically pass it to the plugin, because it sees the
-  extension as .gz. That has been worked around. Windows won't
-  associate .aym.gz files with Winamp, because it too sees them just as
-  .gz files. I don't see any way around this. GZip also ballooned the 
-  DLL size a bit... WinAligning makes it seem even bigger. (Was: ~42KB 
-  -> 64KB after aligning, now it's ~75KB -> 92KB after aligning.)
+<li>Added GZip support. There are problems with the 
+  .aym.gz extension - Winamp won't automatically pass it to the plugin, because 
+  it sees the extension as .gz. That has been worked around. Windows won't 
+  associate .aym.gz files with Winamp, because it too sees them just as .gz 
+  files. I don't see any way around this. GZip also ballooned the DLL size a 
+  bit... WinAligning makes it seem even bigger. (Was: ~42KB -&gt; 64KB after 
+  aligning, now it's ~75KB -&gt; 92KB after aligning.)</li>
 </ul>
 <h3>Alpha 8a 17/8/01</h3>
 <ul>
 <li>Fixed problem with DirectSound output plugin
-<li>Fixed EQ problem
+<li>Fixed EQ problem</li>
 </ul>
 
 <h3>Alpha 8 17/8/01</h3>
 <ul>
 <li>Fixed an error which cause all sound to be half the correct frequency
   (1 octave lower than it should)
-<li>That also fixed voices
+<li>That also fixed voices</li>
 </ul>
 
 <h3>Alpha 7 16/8/01</h3>
@@ -907,14 +830,15 @@ it seems nobody agrees on what's the right way to do it.
   concerned it's the same.
 <li>Tweaked volume so the (theoretical) maximum is now 98% of the
   available volume. It seems this is the "right" thing to do...
-<li>Since compatibility hasn't broken since DYM 1.08 (it uses default
-  values for older versions), the version checking now accepts a range
-  of values.
+<li>Since compatibility hasn't broken since DYM 1.08 (it 
+  uses default values for older versions), the version checking now accepts a 
+  range of values.</li>
 </ul>
 
 <h3>Alpha 6 15/8/01</h3>
 <ul>
-<li>DYM 1.09, with the PSG clock rate in the header. That is all.
+<li>DYM 1.09, with the PSG clock rate in the header. That 
+  is all.</li>
 </ul>
 
 <h3>Alpha 5 15/8/01</h3>
@@ -940,8 +864,8 @@ it seems nobody agrees on what's the right way to do it.
 <li>I switched to my determined PSG clock speed, but it seems to cause
   some problems (with voice) if it's not what the DYM creator used. DYM
   1.09 addition?
-<li>WinAligned DLL... it's 64KB instead of 45, but it now executes from
-  the disk cache on Win98 and higher.
+<li>WinAligned DLL... it's 64KB instead of 45, but it now 
+  executes from the disk cache on Win98 and higher.</li>
 </ul>
 
 <h3>Alpha 4 13/8/01</h3>
@@ -958,8 +882,8 @@ it seems nobody agrees on what's the right way to do it.
 <li>Added VERY quick and dirty noise emulation. It's just volume*random(),
   and sounds crappy. It's better than nothing though. It also accounts
   for about 25% of the CPU use...
-<li>Added DYM version checking, because some people were trying to play
-  old DYM files and crashing Winamp... :)
+<li>Added DYM version checking, because some people were 
+  trying to play old DYM files and crashing Winamp... :)</li>
 </ul>
 
 <h3>Alphas 1 to 3</h3>
@@ -973,7 +897,7 @@ is quite confusing, I think
 is much more readable :) (translation: while what pointer b points to,
 typecast as an integer, is zero, do...)</s>
 <p>
-Forget that, Jason's an asshole and I understand C now.
+Forget that, Jason's an asshole and I understand C now.</p>
 
 </div>
 
@@ -981,15 +905,15 @@ Forget that, Jason's an asshole and I understand C now.
 <h2>Links</h2>
 
 <ul>
-<li><a href=http://www.smspower.org/maxim/>My website</a>
-<li><a href=http://www.smspower.org/music/vgm/>SMS Power! Sega 8-bit VGM music archive</a>
-<li><a href=http://project2612.org/>Project2612 Mega Drive/Genesis/32X VGM music archive</a>
-<li><a href=http://www.smspower.org/music/vgmspecs.shtml>VGM, GD3, VGM7z file format specs</a>
+<li><a href="http://www.smspower.org/maxim">My website</a>
+<li><a href="http://www.smspower.org/music/vgm">SMS Power! Sega 8-bit VGM music archive</a>
+<li><a href="http://project2612.org">Project2612 Mega Drive/Genesis/32X VGM music archive</a>
+<li><a href="http://www.smspower.org/music/vgmspecs.shtml">VGM, GD3, VGM7z file format specs</a></li>
 </ul>
 <p>
 <hr>
 Documentation by Maxim
 <p>
-<a href=http://www.smspower.org>http://www.smspower.org</a>
+<a href="http://www.smspower.org">http://www.smspower.org</a></p>
 
 </body></html>

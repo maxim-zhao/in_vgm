@@ -120,23 +120,23 @@ typedef struct ym2612__ {
 
 /* end */
 
-ym2612_ *YM2612_Init(int clock, int rate, int interpolation);
-int YM2612_End(ym2612_ *YM2612);
-int YM2612_Reset(ym2612_ *YM2612);
-int YM2612_Read(ym2612_ *YM2612);
-int YM2612_Write(ym2612_ *YM2612, unsigned char adr, unsigned char data);
-void YM2612_Update(ym2612_ *YM2612, int **buf, int length);
-int YM2612_Save(ym2612_ *YM2612, unsigned char SAVE[0x200]);
-int YM2612_Restore(ym2612_ *YM2612, unsigned char SAVE[0x200]);
+ym2612_ *GENS_YM2612_Init(int clock, int rate, int interpolation);
+int GENS_YM2612_End(ym2612_ *YM2612);
+int GENS_YM2612_Reset(ym2612_ *YM2612);
+//int YM2612_Read(ym2612_ *YM2612);
+int GENS_YM2612_Write(ym2612_ *YM2612, unsigned char adr, unsigned char data);
+void GENS_YM2612_Update(ym2612_ *YM2612, int **buf, int length);
+/*int YM2612_Save(ym2612_ *YM2612, unsigned char SAVE[0x200]);
+int YM2612_Restore(ym2612_ *YM2612, unsigned char SAVE[0x200]);*/
 
 /* Maxim: muting (bits 0-5 for channels 0-5) */
-int YM2612_GetMute(ym2612_ *YM2612);
-void YM2612_SetMute(ym2612_ *YM2612, int val);
+int GENS_YM2612_GetMute(ym2612_ *YM2612);
+void GENS_YM2612_SetMute(ym2612_ *YM2612, int val);
 
 /* Gens */
 
-void YM2612_DacAndTimers_Update(ym2612_ *YM2612, int **buffer, int length);
-void YM2612_Special_Update(ym2612_ *YM2612);
+void GENS_YM2612_DacAndTimers_Update(ym2612_ *YM2612, int **buffer, int length);
+void GENS_YM2612_Special_Update(ym2612_ *YM2612);
 
 /* end */
 

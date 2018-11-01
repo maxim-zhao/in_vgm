@@ -1,1 +1,12 @@
 *.zip
+*.vgm
+/src/Debug/
+Thumbs.db
+/src/in_vgm.dll
+*.ncb
+*.exe
+/src/LZMA/
+/src/Release/
+/src/sqlite/
+*.vgz
+/src/winampsdk/

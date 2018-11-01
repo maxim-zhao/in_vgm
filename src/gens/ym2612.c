@@ -401,7 +401,7 @@ int SLOT_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       SL->TL = data & 0x7F;
 
       // SOR2 do a lot of TL adjustement and this fix R.Shinobi jump sound...
-      YM2612_Special_Update(YM2612);
+      GENS_YM2612_Special_Update(YM2612);
 
 #if((ENV_HBITS - 7) < 0)
       SL->TLL = SL->TL >> (7 - ENV_HBITS);
@@ -525,7 +525,7 @@ int CHANNEL_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       if(Adr & 0x100) num += 3;
       CH = &(YM2612->CHANNEL[num]);
 
-      YM2612_Special_Update(YM2612);
+      GENS_YM2612_Special_Update(YM2612);
 
       CH->FNUM[0] = (CH->FNUM[0] & 0x700) + data;
       CH->KC[0] = (CH->FOCT[0] << 2) | FKEY_TAB[CH->FNUM[0] >> 7];
@@ -541,7 +541,7 @@ int CHANNEL_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       if(Adr & 0x100) num += 3;
       CH = &(YM2612->CHANNEL[num]);
 
-      YM2612_Special_Update(YM2612);
+      GENS_YM2612_Special_Update(YM2612);
 
       CH->FNUM[0] = (CH->FNUM[0] & 0x0FF) + ((int) (data & 0x07) << 8);
       CH->FOCT[0] = (data & 0x38) >> 3;
@@ -559,7 +559,7 @@ int CHANNEL_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       {
         num++;
 
-        YM2612_Special_Update(YM2612);
+        GENS_YM2612_Special_Update(YM2612);
 
         YM2612->CHANNEL[2].FNUM[num] = (YM2612->CHANNEL[2].FNUM[num] & 0x700) + data;
         YM2612->CHANNEL[2].KC[num] = (YM2612->CHANNEL[2].FOCT[num] << 2) | FKEY_TAB[YM2612->CHANNEL[2].FNUM[num] >> 7];
@@ -577,7 +577,7 @@ int CHANNEL_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       {
         num++;
 
-        YM2612_Special_Update(YM2612);
+        GENS_YM2612_Special_Update(YM2612);
 
         YM2612->CHANNEL[2].FNUM[num] = (YM2612->CHANNEL[2].FNUM[num] & 0x0FF) + ((int) (data & 0x07) << 8);
         YM2612->CHANNEL[2].FOCT[num] = (data & 0x38) >> 3;
@@ -598,7 +598,7 @@ int CHANNEL_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       if(CH->ALGO != (data & 7))
       {
         // Fix VectorMan 2 heli sound (level 1)
-        YM2612_Special_Update(YM2612);
+        GENS_YM2612_Special_Update(YM2612);
 
         CH->ALGO = data & 7;
 
@@ -622,7 +622,7 @@ int CHANNEL_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       if(Adr & 0x100) num += 3;
       CH = &(YM2612->CHANNEL[num]);
 
-      YM2612_Special_Update(YM2612);
+      GENS_YM2612_Special_Update(YM2612);
 
       if(data & 0x80) CH->LEFT = 0xFFFFFFFF;
       else CH->LEFT = 0;
@@ -736,7 +736,7 @@ int YM_SET(ym2612_ *YM2612, int Adr, unsigned char data)
         // We changed the channel 2 mode, so recalculate phase step
         // This fix the punch sound in Street of Rage 2
 
-        YM2612_Special_Update(YM2612);
+        GENS_YM2612_Special_Update(YM2612);
 
         YM2612->CHANNEL[2].SLOT[0].Finc = -1;    // recalculate phase step
       }
@@ -760,7 +760,7 @@ int YM_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       if(data & 4) nch += 3;
       CH = &(YM2612->CHANNEL[nch]);
 
-      YM2612_Special_Update(YM2612);
+      GENS_YM2612_Special_Update(YM2612);
 
       if(data & 0x10) KEY_ON(CH, S0);  // On appuie sur la touche pour le slot 1
       else KEY_OFF(CH, S0);        // On relâche la touche pour le slot 1
@@ -781,7 +781,7 @@ int YM_SET(ym2612_ *YM2612, int Adr, unsigned char data)
       break;
 
     case 0x2B:
-      if(YM2612->DAC ^ (data & 0x80)) YM2612_Special_Update(YM2612);
+      if(YM2612->DAC ^ (data & 0x80)) GENS_YM2612_Special_Update(YM2612);
 
       YM2612->DAC = data & 0x80;  // activation/désactivation du DAC
       break;
@@ -1853,7 +1853,7 @@ void Update_Chan_Algo7_LFO_Int(ym2612_ *YM2612, channel_ *CH, int **buf, int len
 
 
 // Initialisation de l'émulateur YM2612
-ym2612_ *YM2612_Init(int Clock, int Rate, int Interpolation)
+ym2612_ *GENS_YM2612_Init(int Clock, int Rate, int Interpolation)
 {
 	ym2612_ *YM2612;
   int i, j;
@@ -2107,13 +2107,13 @@ ym2612_ *YM2612_Init(int Clock, int Rate, int Interpolation)
   LFO_INC_TAB[6] = (unsigned int) (48.1 * (double) (1 << (LFO_HBITS + LFO_LBITS)) / j);
   LFO_INC_TAB[7] = (unsigned int) (72.2 * (double) (1 << (LFO_HBITS + LFO_LBITS)) / j);
 
-  YM2612_Reset(YM2612);
+  GENS_YM2612_Reset(YM2612);
 
   return YM2612;
 }
 
 
-int YM2612_End(ym2612_ *YM2612)
+int GENS_YM2612_End(ym2612_ *YM2612)
 {
 	free(YM2612);
 
@@ -2126,7 +2126,7 @@ int YM2612_End(ym2612_ *YM2612)
 }
 
 
-int YM2612_Reset(ym2612_ *YM2612)
+int GENS_YM2612_Reset(ym2612_ *YM2612)
 {
   int i, j;
 
@@ -2188,22 +2188,22 @@ int YM2612_Reset(ym2612_ *YM2612)
 
   for(i = 0xB6; i >= 0xB4; i--)
   {
-    YM2612_Write(YM2612, 0, (unsigned char) i);
-    YM2612_Write(YM2612, 2, (unsigned char) i);
-    YM2612_Write(YM2612, 1, 0xC0);
-    YM2612_Write(YM2612, 3, 0xC0);
+    GENS_YM2612_Write(YM2612, 0, (unsigned char) i);
+    GENS_YM2612_Write(YM2612, 2, (unsigned char) i);
+    GENS_YM2612_Write(YM2612, 1, 0xC0);
+    GENS_YM2612_Write(YM2612, 3, 0xC0);
   }
 
   for(i = 0xB2; i >= 0x22; i--)
   {
-    YM2612_Write(YM2612, 0, (unsigned char) i);
-    YM2612_Write(YM2612, 2, (unsigned char) i);
-    YM2612_Write(YM2612, 1, 0);
-    YM2612_Write(YM2612, 3, 0);
+    GENS_YM2612_Write(YM2612, 0, (unsigned char) i);
+    GENS_YM2612_Write(YM2612, 2, (unsigned char) i);
+    GENS_YM2612_Write(YM2612, 1, 0);
+    GENS_YM2612_Write(YM2612, 3, 0);
   }
 
-  YM2612_Write(YM2612, 0, 0x2A);
-  YM2612_Write(YM2612, 1, 0x80);
+  GENS_YM2612_Write(YM2612, 0, 0x2A);
+  GENS_YM2612_Write(YM2612, 1, 0x80);
 
 #if YM_DEBUG_LEVEL > 0
   fprintf(debug_file, "\n\nFinishing reseting YM2612 ...\n\n");
@@ -2228,7 +2228,7 @@ int YM2612_Read(ym2612_ *YM2612)
 }
 
 
-int YM2612_Write(ym2612_ *YM2612, unsigned char adr, unsigned char data)
+int GENS_YM2612_Write(ym2612_ *YM2612, unsigned char adr, unsigned char data)
 {
   int d;
 
@@ -2307,7 +2307,7 @@ int YM2612_Write(ym2612_ *YM2612, unsigned char adr, unsigned char data)
   return 0;
 }
 
-int YM2612_GetMute(ym2612_ *YM2612)
+int GENS_YM2612_GetMute(ym2612_ *YM2612)
 {
   int i, result = 0;
   for (i = 0; i < 6; ++i)
@@ -2321,7 +2321,7 @@ int YM2612_GetMute(ym2612_ *YM2612)
   return result;  
 }
 
-void YM2612_SetMute(ym2612_ *YM2612, int val)
+void GENS_YM2612_SetMute(ym2612_ *YM2612, int val)
 {
   int i;
   for (i = 0; i < 6; ++i)
@@ -2329,12 +2329,12 @@ void YM2612_SetMute(ym2612_ *YM2612, int val)
     YM2612->CHANNEL[i].Mute = val & 1;
     val >>= 1;
   }
-  DAC_Enable = !(val & 1);
+  //DAC_Enable = !(val & 1);
 	val >>= 1;
 	YM2612_Enable_SSGEG = !(val & 1);
 }
 
-void YM2612_Update(ym2612_ *YM2612, int **buf, int length)
+void GENS_YM2612_Update(ym2612_ *YM2612, int **buf, int length)
 {
   int i, j, algo_type;
 
@@ -2422,7 +2422,7 @@ void YM2612_Update(ym2612_ *YM2612, int **buf, int length)
 
 }
 
-
+/*
 int YM2612_Save(ym2612_ *YM2612, unsigned char SAVE[0x200])
 {
   int i;
@@ -2453,12 +2453,12 @@ int YM2612_Restore(ym2612_ *YM2612, unsigned char SAVE[0x200])
 
   return 0;
 }
-
+*/
 /* Gens */
 
 enum { highpass_fract = 15 };
 enum { highpass_shift = 9 }; // higher values reduce highpass on DAC
-void YM2612_DacAndTimers_Update(ym2612_ *YM2612, int **buffer, int length)
+void GENS_YM2612_DacAndTimers_Update(ym2612_ *YM2612, int **buffer, int length)
 {
   int *bufL, *bufR;
   int i;
@@ -2478,7 +2478,7 @@ void YM2612_DacAndTimers_Update(ym2612_ *YM2612, int **buffer, int length)
 			bufR[i] += dac & YM2612->CHANNEL[5].RIGHT;
     }
   }
-
+/*
   i = YM2612->TimerBase * length;
 
   if(YM2612->Mode & 1)              // Timer A ON ?
@@ -2510,11 +2510,12 @@ void YM2612_DacAndTimers_Update(ym2612_ *YM2612, int **buffer, int length)
 #endif
     }
   }
+	*/
 }
 
 /* Gens */
 
-void YM2612_Special_Update(ym2612_ *YM2612)
+void GENS_YM2612_Special_Update(ym2612_ *YM2612)
 {
 /*	if (YM_Len && YM2612_Enable)
   {

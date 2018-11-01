@@ -1,0 +1,580 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+MAINICON                ICON                    "mainicon.ico"
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+bmLogo                  BITMAP                  "images\\logo.bmp"
+tabicons                BITMAP                  "images\\tabicons.bmp"
+#endif    // Neutral resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral (Default) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUD)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+CONFIGDIALOGUE DIALOGEX 0, 0, 286, 210
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | 
+    WS_CAPTION | WS_SYSMENU
+CAPTION "VGM plugin configuration"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,230,193,52,14
+    CONTROL         "Tab1",tcMain,"SysTabControl32",TCS_MULTILINE | 
+                    WS_TABSTOP,2,2,280,187
+    CONTROL         "&Immediate update",cbMuteImmediate,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,195,121,10
+    PUSHBUTTON      "Help",btnReadMe,169,193,52,14
+END
+
+FILEINFODIALOGUE DIALOGEX 0, 0, 379, 143
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | 
+    WS_CAPTION | WS_SYSMENU
+CAPTION "VGM file & GD3 tag information"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,325,127,52,14
+    GROUPBOX        "Track",308,2,0,173,40
+    LTEXT           "&Title",300,7,10,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebTitle,40,10,130,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Author",301,7,23,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebAuthor,40,23,130,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Game",309,2,40,173,52
+    LTEXT           "Na&me",302,7,49,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebName,40,49,130,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&System",303,7,62,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebSystem,40,62,130,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Date",304,7,75,32,12,SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebDate,40,75,130,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Language",IDC_STATIC,123,92,52,33
+    CONTROL         "&English",rbEnglish,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,127,103,39,8
+    CONTROL         "&Japanese",rbJapanese,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,127,113,43,8
+    GROUPBOX        "VGM file",IDC_STATIC,179,0,198,125
+    LTEXT           "&Filename",IDC_STATIC,185,10,39,12,SS_CENTERIMAGE | NOT 
+                    WS_GROUP
+    EDITTEXT        ebFilename,224,10,102,12,ES_AUTOHSCROLL | ES_READONLY
+    CONTROL         "&Creator",305,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_CENTERIMAGE,185,23,39,12
+    EDITTEXT        ebCreator,224,23,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Version",306,185,36,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebVersion,224,36,23,12,ES_AUTOHSCROLL | ES_READONLY
+    CHECKBOX        "SN76489",rbSN76489,329,23,44,12,NOT WS_TABSTOP
+    CHECKBOX        "YM2413",rbYM2413,329,36,41,12,NOT WS_TABSTOP
+    LTEXT           "Si&ze",IDC_STATIC,185,49,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebSize,224,49,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Length",IDC_STATIC,185,62,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebLength,224,62,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Notes:",IDC_STATIC,185,89,39,8
+    EDITTEXT        ebNotes,185,99,188,22,ES_MULTILINE | ES_READONLY | 
+                    WS_VSCROLL
+    PUSHBUTTON      "View in &browser",btnInfoInBrowser,123,127,80,14
+    PUSHBUTTON      "Configure &plugin...",btnConfigure,206,127,80,14
+    CONTROL         1004,IDC_STATIC,"Static",SS_BITMAP | SS_REALSIZEIMAGE,2,
+                    95,119,46
+    CHECKBOX        "YM2612",rbYM2612,329,49,41,12,NOT WS_TABSTOP
+    CHECKBOX        "YM2151",rbYM2151,329,62,41,12,NOT WS_TABSTOP
+    LTEXT           "Chips used:",IDC_STATIC,329,10,39,12,SS_CENTERIMAGE | 
+                    NOT WS_GROUP
+    LTEXT           "&Replay Gain",IDC_STATIC,185,75,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebReplayGain,224,75,102,12,ES_AUTOHSCROLL | ES_READONLY
+END
+
+DlgCfgPlayback DIALOGEX 0, 0, 268, 152
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    GROUPBOX        "Looping",IDC_STATIC,4,4,260,40
+    LTEXT           "&Repeat looped section",IDC_STATIC,8,13,72,12,
+                    SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebLoopCount,83,13,34,12,ES_NUMBER
+    LTEXT           "times\t(0 = play looped section once)",IDC_STATIC,123,
+                    13,135,12,SS_CENTERIMAGE | NOT WS_GROUP
+    LTEXT           "Then &fade out over",IDC_STATIC,8,27,62,12,
+                    SS_CENTERIMAGE
+    EDITTEXT        ebFadeOutLength,74,27,48,12,ES_NUMBER
+    LTEXT           "ms*",IDC_STATIC,128,27,14,12,SS_CENTERIMAGE
+    CONTROL         "Loop forever (can't seek)",cbLoopForever,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,156,27,97,12
+    GROUPBOX        "Pause after non-looped tracks",IDC_STATIC,4,44,160,26
+    LTEXT           "&Pause",IDC_STATIC,8,54,20,12,SS_CENTERIMAGE
+    EDITTEXT        ebPauseLength,32,54,48,12,ES_NUMBER
+    LTEXT           "ms*",IDC_STATIC,85,54,26,12,SS_CENTERIMAGE
+    LTEXT           "* Not included in\n   reported track length",IDC_STATIC,
+                    169,50,78,18
+    GROUPBOX        "Playback rate",IDC_STATIC,4,70,85,75
+    CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,10,79,60,10
+    CONTROL         "&50Hz",rbRate50,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,10,89,60,10
+    CONTROL         "&60Hz",rbRate60,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,10,99,30,10,WS_EX_TRANSPARENT
+    CONTROL         "Ot&her:",rbRateOther,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,10,109,31,10
+    EDITTEXT        ebPlaybackRate,43,108,30,12,ES_NUMBER | WS_GROUP
+    LTEXT           "Hz",IDC_STATIC,75,108,9,12,SS_CENTERIMAGE | NOT 
+                    WS_GROUP
+    CTEXT           "Takes effect on the next track start",IDC_STATIC,8,124,
+                    77,16,NOT WS_GROUP
+    GROUPBOX        "Volume, muting and panning",IDC_STATIC,94,70,170,52
+    CONTROL         "O&verdrive (louder, more chance of clipping)",
+                    cbOverDrive,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,100,79,
+                    160,10
+    CONTROL         "&Keep muting on track change",cbMutePersistent,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,100,89,160,10
+    CONTROL         "R&andomise panning on track start",cbRandomisePanning,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,100,99,160,10
+    CONTROL         "Apply Replay &Gain transcoding hack",
+                    cbEnableReplayGainHack,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,100,109,160,10
+    GROUPBOX        "Filtering",IDC_STATIC,94,123,170,22
+    CONTROL         "&None",rbFilterNone,"Button",BS_AUTORADIOBUTTON,100,132,
+                    47,10
+    CONTROL         "&Low Pass",rbFilterLowPass,"Button",BS_AUTORADIOBUTTON,
+                    156,132,47,10
+    CONTROL         "&Weighted",rbFilterWeighted,"Button",BS_AUTORADIOBUTTON,
+                    212,132,47,10
+END
+
+DlgCfgYM2612 DIALOGEX 0, 0, 268, 152
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "Chip control",IDC_STATIC,4,4,260,23
+    CONTROL         "&Enable",cbYM2612Enable,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,12,48,12
+    LTEXT           "&Preamp",IDC_STATIC,69,12,25,12,SS_CENTERIMAGE
+    CONTROL         "",slYM2612Preamp,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,97,12,142,11
+    LTEXT           "200",txt2612Preamp,244,14,13,8
+    GROUPBOX        "Channel control",IDC_STATIC,4,28,167,62
+    CONTROL         "&Tone channels:",cb2612All,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,36,82,12
+    CONTROL         "Tone &1",cb2612Tone1,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,49,48,12
+    CONTROL         "Tone &2",cb2612Tone2,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,62,48,12
+    CONTROL         "Tone &3",cb2612Tone3,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,75,48,12
+    CONTROL         "Tone &4",cb2612Tone4,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,69,49,48,12
+    CONTROL         "Tone &5",cb2612Tone5,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,69,62,48,12
+    CONTROL         "Tone &6",cb2612Tone6,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,69,75,94,12
+    CONTROL         "&DAC",cb2612DAC,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    130,36,35,12
+    GROUPBOX        "Engine",IDC_STATIC,177,28,87,62
+    CONTROL         "&Gens",rbYM2612Gens,"Button",BS_AUTORADIOBUTTON | 
+                    WS_GROUP,182,36,32,12
+    CONTROL         "&MAME",rbYM2612MAME,"Button",BS_AUTORADIOBUTTON,181,49,
+                    35,12
+    GROUPBOX        "Emulation",IDC_STATIC,4,92,260,24
+    CONTROL         "&SSG-type envelope generator (Gens)",cb2612SSGEG,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,8,101,151,12
+    CTEXT           "The Yamaha YM2612 FM chip is found in Sega's Mega Drive and Genesis consoles.",
+                    IDC_STATIC,37,124,193,24
+END
+
+DlgCfgTags DIALOGEX 0, 0, 268, 153
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "File type",IDC_STATIC,4,4,128,49
+    LTEXT           "File type &ID:",IDC_STATIC,9,13,42,12,SS_CENTERIMAGE
+    EDITTEXT        ebMLType,53,13,72,12,ES_AUTOHSCROLL | ES_NUMBER
+    CTEXT           "0 = audio, 1 = video, other values are undefined. See the documentation for the use of this.",
+                    IDC_STATIC,9,26,117,26
+    CONTROL         "Use &Japanese text when available",cbMLJapanese,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,4,60,129,12
+    GROUPBOX        "Scan other files to guess",IDC_STATIC,136,4,128,49
+    CONTROL         "&Track numbers",cbTagsGuessTrackNumbers,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,142,13,116,12
+    CONTROL         "&Album artist(s)",cbTagsGuessAlbumArtist,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,142,24,116,12
+    GROUPBOX        "Tag tweaks",IDC_STATIC,136,54,128,91
+    CONTROL         "Trim &whitespace",cbTagsTrimWhitespace,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,142,62,116,12
+    CONTROL         "Standardise &separators (to ;)",
+                    cbTagsStandardiseSeparators,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,142,73,116,12
+    CONTROL         "Mark YM2413 games as (&FM)",cbMLShowFM,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,142,84,116,12
+    CONTROL         "Standardise &dates",cbTagsStandardiseDates,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,142,95,116,12
+END
+
+DlgCfgPSG DIALOGEX 0, 0, 268, 152
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    GROUPBOX        "Chip control",IDC_STATIC,4,4,260,23
+    CONTROL         "&Enable",cbSNEnable,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,12,37,12
+    LTEXT           "&Preamp",IDC_STATIC,69,14,25,8
+    CONTROL         "",slSNPreamp,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,97,12,142,11
+    LTEXT           "200",txtSNPreamp,244,14,13,8
+    GROUPBOX        "Channel control",gbPSGChannels,4,28,260,66
+    CONTROL         "Tone &1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    8,36,37,12
+    CONTROL         "",slSNCh0,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,63,36,146,11
+    CONTROL         "Tone &2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    8,49,37,12
+    CONTROL         "",slSNCh1,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,63,49,146,11
+    CONTROL         "Tone &3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
+                    8,62,37,12
+    CONTROL         "",slSNCh2,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,63,62,146,11
+    CONTROL         "&Noise/bass",cbTone4,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,75,48,12
+    CONTROL         "",slSNCh3,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,63,75,146,11
+    PUSHBUTTON      "&Centre all",btnCentrePSG,214,36,45,13
+    PUSHBUTTON      "&Randomise",btnRandomPSG,214,49,45,13
+    CTEXT           "The SN76489 and SN76496 Programmable Sound Generators are found in Sega consoles, the ColecoVision, the BBC Model B and many arcade machines.",
+                    IDC_STATIC,4,102,260,18
+END
+
+DlgCfgYM2413 DIALOGEX 0, 0, 268, 152
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    GROUPBOX        "Chip control",IDC_STATIC,4,4,260,23
+    CONTROL         "&Enable",cbYM2413Enable,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,12,37,12
+    LTEXT           "Pre&amp",IDC_STATIC,69,14,25,8
+    CONTROL         "",slYM2413Preamp,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,97,12,142,11
+    LTEXT           "200",txt2413Preamp,244,14,13,8
+    GROUPBOX        "Channel control",gb2413Channels,4,28,260,89
+    CONTROL         "&Percussion:",cbYM2413PercAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,36,52,12
+    CONTROL         "&Hi-hat",cbYM241310,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,49,52,12
+    CONTROL         "",sl2413hh,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,59,49,48,11
+    CONTROL         "C&ymbal",cbYM241311,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,62,52,12
+    CONTROL         "",sl2413cym,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,59,62,48,11
+    CONTROL         "T&om-tom",cbYM241312,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,75,52,12
+    CONTROL         "",sl2413tt,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,59,75,48,11
+    CONTROL         "&Snare drum",cbYM241313,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,88,52,12
+    CONTROL         "",sl2413sd,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,59,88,48,11
+    CONTROL         "&Bass drum",cbYM241314,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,101,52,12
+    CONTROL         "",sl2413bd,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,59,101,48,11
+    CONTROL         "&Tone channels:",cbYM2413ToneAll,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,114,36,63,12
+    CONTROL         "&1",cbYM24131,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,114,
+                    48,20,12
+    CONTROL         "",sl2413ch1,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,132,49,48,11
+    CONTROL         "&2",cbYM24132,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,114,
+                    62,20,12
+    CONTROL         "",sl2413ch2,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,132,62,48,11
+    CONTROL         "&3",cbYM24133,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,114,
+                    75,20,12
+    CONTROL         "",sl2413ch3,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,132,75,48,11
+    CONTROL         "&4",cbYM24134,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,114,
+                    88,20,12
+    CONTROL         "",sl2413ch4,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,132,88,48,11
+    CONTROL         "&5",cbYM24135,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,114,
+                    101,20,12
+    CONTROL         "",sl2413ch5,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,132,101,48,11
+    CONTROL         "&6",cbYM24136,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,188,
+                    62,20,12
+    CONTROL         "",sl2413ch6,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,206,62,48,11
+    CONTROL         "&7",cbYM24137,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,188,
+                    75,20,12
+    CONTROL         "",sl2413ch7,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,206,75,48,11
+    CONTROL         "&8",cbYM24138,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,188,
+                    88,20,12
+    CONTROL         "",sl2413ch8,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,206,88,48,11
+    CONTROL         "&9",cbYM24139,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,188,
+                    101,20,12
+    CONTROL         "",sl2413ch9,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,206,101,48,11
+    PUSHBUTTON      "&Centre all",btnCentre2413,214,36,45,13
+    PUSHBUTTON      "&Randomise",btnRandom2413,214,49,45,13
+    GROUPBOX        "Emulation",gb2413Emulation,4,119,122,30
+    CONTROL         "Emulate at &true sampling rate (uses more CPU for resampling)",
+                    cbYM2413HiQ,"Button",BS_AUTOCHECKBOX | BS_TOP | 
+                    BS_MULTILINE | WS_TABSTOP,8,128,114,18
+    CTEXT           "The YM2413 OPLL FM chip is found in Japanese SMSs, Mark III FM Units, MSX expansion packs and arcade machines.",
+                    IDC_STATIC,129,121,134,26
+END
+
+DlgCfgVgm7z DIALOGEX 0, 0, 268, 152
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "VGM7z support",IDC_STATIC,4,4,188,120
+    CONTROL         "&Enable",cbEnable7zSupport,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,12,41,12
+    CONTROL         "&Prompt before extracting",cbPromptOnExtract,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,8,24,150,12
+    GROUPBOX        "Extract to",gbExtractTo,8,37,179,55
+    CONTROL         "&Same folder as VGM7z file",rbExtractSameDir,"Button",
+                    BS_AUTORADIOBUTTON,12,46,98,12
+    CONTROL         "&Fixed directory:",rbExtractFixedDir,"Button",
+                    BS_AUTORADIOBUTTON,12,59,64,12
+    EDITTEXT        ebExtractDir,83,59,97,12,ES_AUTOHSCROLL
+    CONTROL         "Extract to su&bfolder named after VGM7z file",
+                    cbExtractToSubfolder,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,12,77,163,12
+    LTEXT           "VGM &compression",lblVGMCompression,8,93,63,12,
+                    SS_CENTERIMAGE
+    CONTROL         "",slVGMcompression,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,70,93,60,11
+    CONTROL         "9",lblVGMCompressionValue,"Static",SS_LEFTNOWORDWRAP | 
+                    SS_CENTERIMAGE | WS_GROUP,132,93,8,12
+    CONTROL         "&Delete VGM7z file after extracting",cbDelete7z,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,8,107,150,12
+END
+
+DlgCfgYM2151 DIALOGEX 0, 0, 268, 152
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "Chip control",-1,4,4,260,23
+    CONTROL         "&Enable",cbYM2151Enable,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,8,12,49,12
+    LTEXT           "Pre&amp",-1,69,12,25,12,SS_CENTERIMAGE
+    CONTROL         "",slYM2151Preamp,"msctls_trackbar32",TBS_AUTOTICKS | 
+                    WS_TABSTOP,97,12,142,11
+    LTEXT           "200",txt2151Preamp,244,14,13,8
+    CTEXT           "YM2151 per-channel control is not available yet.\n\nThe Yamaha YM2151 FM chip is found in CPS-1 arcade machines.",
+                    -1,15,31,237,24
+END
+
+DlgCfgLegacy DIALOGEX 0, 0, 268, 153
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "Legacy title &formatting",IDC_STATIC,4,23,100,103
+    EDITTEXT        ebTrackTitle,9,34,86,12,ES_AUTOHSCROLL
+    LTEXT           "%t\tTrack title*\n%a\tTrack author*\n%g\tGame name*\n%d\tGame release date\n%s\tSystem name*\n%c\tFile creator\n* use %?j for Japanese text if available\nDefault:  ""%t (%g) - %a""",
+                    IDC_STATIC,8,49,91,74,NOT WS_GROUP
+    CTEXT           "Note: settings on this tab are only for old versions of Winamp and/or legacy features that ou probably shouldn't be using any more.",
+                    IDC_STATIC,4,4,260,19
+    CONTROL         "&Open ""Now Playing"" if it is closed",cbForceMBOpen,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,111,
+                    55,150,12
+    CONTROL         "Display them &automatically",cbAutoMB,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,111,44,121,12
+    CONTROL         "&Display GD3 tags as HTML in ""Now Playing""",cbUseMB,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,111,33,150,12
+    GROUPBOX        "Now Playing (aka MiniBrowser)",IDC_STATIC,107,23,157,48
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    "CONFIGDIALOGUE", DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 282
+        BOTTOMMARGIN, 207
+    END
+
+    "FILEINFODIALOGUE", DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 377
+        VERTGUIDE, 7
+        VERTGUIDE, 40
+        VERTGUIDE, 170
+        VERTGUIDE, 175
+        VERTGUIDE, 179
+        VERTGUIDE, 185
+        VERTGUIDE, 224
+        BOTTOMMARGIN, 141
+    END
+
+    DlgCfgPlayback, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        VERTGUIDE, 8
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 148
+    END
+
+    DlgCfgYM2612, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 148
+    END
+
+    DlgCfgTags, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        VERTGUIDE, 9
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 149
+    END
+
+    DlgCfgPSG, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        VERTGUIDE, 8
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 148
+    END
+
+    DlgCfgYM2413, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        VERTGUIDE, 8
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 148
+    END
+
+    DlgCfgVgm7z, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        VERTGUIDE, 8
+        VERTGUIDE, 12
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 148
+    END
+
+    DlgCfgYM2151, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 148
+    END
+
+    DlgCfgLegacy, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 264
+        VERTGUIDE, 9
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 149
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#endif    // Neutral (Default) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
