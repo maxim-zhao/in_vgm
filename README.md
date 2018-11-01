@@ -1,5 +1,5 @@
 # in_vgm
-Winamp plugin for VGM files developed from 2001 to 2006
+Winamp plugin for VGM files developed from 2001 to 2009
 
 This repo houses the source for in_vgm, the Winamp plugin I wrote for VGM files as they were being invented. 
 
@@ -19,3 +19,5 @@ You are allowed to do what you like with it just so long as:
 ```
 
 It is now relicenced under the Unlicense, you are free to do whatever you want with it.
+
+Original releases (for some of which the source snapshot is lost) can be found at http://www.smspower.org/Music/InVgm
