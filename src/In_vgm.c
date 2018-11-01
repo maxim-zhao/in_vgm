@@ -7,7 +7,7 @@
 
 #define FMPERCENT 60
 
-#define PLUGINNAME "VGM input plugin v0.23"
+#define PLUGINNAME "VGM input plugin v0.24"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
@@ -322,7 +322,6 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			CheckDlgButton(DlgWin,cbUseMB        ,UseMB);
 			CheckDlgButton(DlgWin,cbAutoMB       ,AutoMB);
 			CheckDlgButton(DlgWin,cbForceMBOpen  ,ForceMBOpen);
-			CheckDlgButton(DlgWin,cbPSGOverSample,PSGOverSample);
 			EnableWindow(GetDlgItem(DlgWin,cbAutoMB     ),UseMB);
 			EnableWindow(GetDlgItem(DlgWin,cbForceMBOpen),UseMB & AutoMB);
 
@@ -415,9 +414,6 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				case cbForceMBOpen:
 					ForceMBOpen=IsDlgButtonChecked(DlgWin,cbForceMBOpen);
 					break;
-				case cbPSGOverSample:
-					PSGOverSample=IsDlgButtonChecked(DlgWin,cbPSGOverSample);
-					break;
 
             };
             break ;
@@ -441,12 +437,17 @@ void about(HWND hwndParent)
 		"http://www.smspower.org/music\n\n"
 		"Current status:\n"
 		"PSG - emulated as a perfect device, leading to slight differences in sound\n"
-		"  compared to the real thing. Noise is as accurate as it can be since the\n"
-		"  feedback system is unknown.\n"
-		"YM2413 - via EMU2413\n"
-		"YM(other) - not yet considered\n\n"
+		"  compared to the real thing. Noise pattern is 100% accurate to my SMS2's\n"
+		"  output after I calculated the feedback network; but it doesn't match\n"
+		"  some other chips.\n"
+		"YM2413 - via EMU2413 (http://www.angel.ne.jp/~okazaki/ym2413).\n"
+		"YM(other) - not yet considered, engine authors please help!\n\n"
 		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial\n"
-		"project and as such it is permanently in beta."
+		"project and as such it is permanently in beta.\n\n"
+		"Thanks go to:\n"
+		"Bock, Heliophobe, Mike G, Steve Snake, Dave, Charles MacDonald,\n"
+		"Ville Helin, Mitsutaka Okazaki, John Kortink, fx^\n\n"
+		"   ...and Zhao Yuehua xxx wo ai ni"
 		,PLUGINNAME,MB_OK);
 }
 
@@ -472,7 +473,6 @@ void init() {
 	UseMB           =GetPrivateProfileInt(INISECTION,"Use Minibrowser"     ,1,INIFileName);
 	AutoMB          =GetPrivateProfileInt(INISECTION,"Auto-show HTML"      ,0,INIFileName);
 	ForceMBOpen     =GetPrivateProfileInt(INISECTION,"Force MB open"       ,0,INIFileName);
-	PSGOverSample   =GetPrivateProfileInt(INISECTION,"PSG oversampling"    ,0,INIFileName);
 
 	GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
 
@@ -498,7 +498,6 @@ void quit() {
 	WritePrivateProfileString(INISECTION,"Use Minibrowser"     ,itoa(UseMB           ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Auto-show HTML"      ,itoa(AutoMB          ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Force MB open"       ,itoa(ForceMBOpen     ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"PSG oversampling"    ,itoa(PSGOverSample   ,tempstr,10),INIFileName);
 
 	DeleteFile(TextFileName);
 };
@@ -703,7 +702,7 @@ int play(char *fn)
 
 	if (FMClock) {
 		// Start up the YM2413
-		OPLL_init(FMClock,44100);
+		OPLL_init(FMClock,SAMPLERATE);
 		opll = OPLL_new();
 		OPLL_reset(opll);
 		OPLL_reset_patch(opll,0);
@@ -711,7 +710,7 @@ int play(char *fn)
 	};
 
 	// Start up SN76489
-	if (PSGClock) SN76489_Init(PSGClock);
+	if (PSGClock) SN76489_Init(PSGClock,SAMPLERATE);
 
 	// Reset some stuff
 	paused=0;
@@ -754,7 +753,7 @@ int ispaused() {
 // Stop
 //-----------------------------------------------------------------
 void stop() {
-	SeekToSampleNumber=0;	// Fixes near=eof errors - it breaks it out of the wait-for-output-to-stop loop in DecodeThread
+	SeekToSampleNumber=0;	// Fixes near-eof errors - it breaks it out of the wait-for-output-to-stop loop in DecodeThread
 	if (thread_handle != INVALID_HANDLE_VALUE) {	// If the playback thread is going
 		killDecodeThread=1;	// Set the flag telling it to stop
 		if (WaitForSingleObject(thread_handle,INFINITE) == WAIT_TIMEOUT) {
@@ -806,6 +805,8 @@ void setoutputtime(int time_in_ms) {
 
 	if (InputFile==NULL) return;
 
+	mod.outMod->Pause(1);
+
 	if ((LoopLengthInms>0) &&	// file is looped
 		(time_in_ms>IntroLengthInms)) {	// seek is past loop point
 			gzseek(InputFile,LoopOffset,SEEK_SET);
@@ -816,6 +817,8 @@ void setoutputtime(int time_in_ms) {
 		NumLoopsDone=0;
 		SeekToSampleNumber=(int)(time_in_ms*44.1);
 	};
+
+	if (!paused) mod.outMod->Pause(0);
 
 	mod.outMod->Flush(time_in_ms);
 
@@ -1189,6 +1192,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 {
 	int SamplesTillNextRead=0;
 	float WaitFactor,FractionalSamplesTillNextRead=0;
+	signed int l,r;
 
 	if ((PlaybackRate==0) || (FileRate==0)) {
 		WaitFactor=1.0;
@@ -1291,24 +1295,26 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				// Write sample
 				#if NCH == 2
 				// Stereo
-				SampleBuffer[2*x]=0;
-				SampleBuffer[2*x+1]=0;
 				// PSG
-				if (PSGClock) SN76489_WriteToBuffer(SampleBuffer,x);
+				if (PSGClock) SN76489_GetValues(&l,&r);
+
 				// YM2413
 				if (FMClock) {
-					if (PSGClock) {	// mix the two
-						int FM=OPLL_calc(opll);
-						SampleBuffer[2*x]  =(FM*FMPERCENT+SampleBuffer[2*x  ]*(100-FMPERCENT))/100;
-						SampleBuffer[2*x+1]=(FM*FMPERCENT+SampleBuffer[2*x+1]*(100-FMPERCENT))/100;
-					} else {	// just FM
-						SampleBuffer[2*x]  =OPLL_calc(opll);
-						SampleBuffer[2*x+1]=SampleBuffer[2*x];
+					int FMVal=OPLL_calc(opll);
+
+					if (PSGClock) {
+						l=(FMVal*FMPERCENT+l*(100-FMPERCENT))/100;
+						r=(FMVal*FMPERCENT+r*(100-FMPERCENT))/100;
+					} else {
+						l=FMVal;
+						r=FMVal;
 					};
 				};
+				SampleBuffer[2*x]  =l;
+				SampleBuffer[2*x+1]=r;
 
 				#else
-				// Mono
+				// Mono - not yet working
 				if (FMClock) SampleBuffer[x]=OPLL_calc(opll);
 				#endif
 
@@ -1347,8 +1353,6 @@ In_Module mod =
 	0,	// hMainWindow
 	0,	// hDllInstance
 	"vgz;vgm\0VGM Audio File (*.vgm;*.vgz)\0",
-	// Due to a Winamp bug (v2.76 and others) *.vgm files will not appear when "All files" is selected in
-	// the Open box, but will when the filter is changed to this, and will be in the ext list.
 	1,	// is_seekable
 	1,	// uses output
 	config,

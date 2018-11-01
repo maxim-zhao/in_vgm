@@ -1,4 +1,4 @@
-VGM input plugin 0.23
+VGM input plugin 0.24
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
@@ -11,6 +11,13 @@ Load .vgm or .vgz files in Winamp; go to the "File types" preferences page to as
 3. Make sure "vgm" and "vgz" are selected in the "Associated extensions" list (if they aren't in the list it's because you have another buggy plugin installed)
 
 Be sure to check out the file info and plugin configuration dialogues.
+
+Automatic Japanese:
+あなたが日本語へこのソフトウェアの翻訳を助けることができれ
+ば電子メール私は(英語で)
+
+
+The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki (http://www.angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. It uses Zlib by Jean-loup Gailly and Mark Adler.
 
 
 Actually asked questions
@@ -29,23 +36,6 @@ Yes, it is. "Frequency modulation" means using one sine wave to change the frequ
 > The latest VGM plugin is much slower on my p133. The last one works fine, but with the new one the songs stops and then continues after a second all the time. Why? 
 
 Because FM emulation is a lot more complicated than PSG emulation, so it takes more time (see the benchmarks below). You might like to get VGMTool to optimise any VGMs with unnecessary chip data in them, or possibly re-download the files if they've been updated with optimised versions.
-
-
-Benchmark
-=========
-
-If either the FM or PSG clock rate is non-zero, that chip will be emulated, even if it is not used.
-
-Files used: WB3 mouse-man music for FM, Green Hill for PSG. CPU: mobile PIII @ 500MHz.
-
-File type           Typical CPU usage (WinTop in Win98)
-
-FM only              9.6-10.8%
-FM with silent PSG  13.1-14.2%
-PSG only             2.8- 3.5%
-PSG with silent FM  11.4-12.5%
-
-So obviously it's better not to emulate an unused chip... it's OK to have data in the file for an unused chip, it'll be ignored if the chip speed is zero.
 
 
 How to play VGM files direct from your webpage
@@ -67,17 +57,27 @@ You can choose to loop a VGM a lot of times. However, Winamp doesn't like that..
 - some output plugins don't like it - eg. in Winamp 2.77, the waveOut plugin will display the wrong time while playing past 202:53
 - very high values will make the main window/posbar length wrong too
 
-*the following KIs relate to an old version, I will update them some time soon*
+On my computer, turning on the equaliser will make it use 3 times as much CPU for PSG tunes, and 1.8 times as much for FM.
 
-On my computer, turning on the equaliser will make it use 6 times as much CPU; the EQ presumably does not like square waves.
+The equaliser does not process square waves well. I recommend you turn it off if you can.
 
 I tried a DSP plugin, "Dee". It crashes Winamp whenever you turn on the 3D thing, I have no idea why. So don't do that.
 
 I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is quite cool.
 
+It sometimes crashes when seeking. I don't know why.
+
 
 History:
 ========
+
+0.24 25/3/02
+============
+
++ Improved PSG tone channel oversampling (or rather sub-sample accuracy) a huge amount - aliasing is gone and it sounds great. It's now always turned on.
++ Rewrote PSG noise simulation to be 100% accurate to how the real chip works
++ Reverse engineered SMS SN76489 (PSG) feedback network so noise pattern is bit-accurate
++ Updated to ZLib 1.1.4
 
 0.23 17/3/02
 ============

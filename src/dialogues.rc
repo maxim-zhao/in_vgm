@@ -168,12 +168,9 @@ BEGIN
     EDITTEXT        ebTrackTitle,141,86,81,12,ES_AUTOHSCROLL
     LTEXT           "%t = Track title*\n%a = Track author*\n%g = Game name*\n%d = Game release date\n%s = System name*\n%c = File creator\n* use %?j for\n   Japanese text",
                     IDC_STATIC,141,99,83,64,NOT WS_GROUP
-    ICON            "MAINICON",IDC_STATIC,141,192,20,20
+    ICON            "MAINICON",IDC_STATIC,141,191,18,20
     CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,6,199,122,8
-    GROUPBOX        "Miscellaneous",IDC_STATIC,136,169,91,22
-    CONTROL         "PSG oversampling",cbPSGOverSample,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,141,179,76,10
 END
 
 
