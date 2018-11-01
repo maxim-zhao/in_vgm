@@ -9,15 +9,20 @@
 #define cbTone4                         108
 #define ebTrackTitle                    110
 #define DlgCfgML                        111
-#define DlgCfgMuting                    112
+#define DlgCfgTags                      112
 #define ebPlaybackRate                  113
 #define rbRateOriginal                  114
-#define DlgCfgPlayback                  114
-#define rbRate50                        115
-#define DlgCfgGD3                       115
-#define bmLogo                          115
-#define rbRate60                        116
-#define rbRateOther                     117
+#define DlgCfgPlayback                  115
+#define rbRate50                        116
+#define DlgCfgGD3                       117
+#define bmLogo                          118
+#define DlgCfgOthers                    119
+#define rbRate60                        120
+#define rbRateOther                     121
+#define tabicons                        122
+#define DlgCfgPSG                       123
+#define DlgCfgYM2413                    124
+#define IDB_BITMAP1                     125
 #define ebTitle                         200
 #define ebName                          201
 #define ebSystem                        202
@@ -32,7 +37,11 @@
 #define btnConfigure                    211
 #define ebVersion                       212
 #define rbPSG                           213
+#define rbSN76489                       213
 #define rbFM                            214
+#define rbYM2413                        214
+#define rbYM2612                        215
+#define rbYM2151                        216
 #define cbYM24131                       301
 #define cbYM24132                       302
 #define cbYM24133                       303
@@ -57,7 +66,7 @@
 #define gbPSG                           1028
 #define gbYM2413                        1029
 #define cbYM2413ToneAll                 1030
-#define btnUnicodeText                  1030
+#define btnUnicodeText                  1031
 #define cbUseMB                         1032
 #define cbAutoMB                        1033
 #define cbForceMBOpen                   1035
@@ -77,9 +86,39 @@
 #define ebFadeOutLength                 1051
 #define cbMutePersistent                1054
 #define cbMLJapanese                    1055
-#define cbMLShowFM                      1056
-#define IDC_EDIT1                       1057
-#define ebMLType                        1057
+#define cbMutePersistent2               1056
+#define cbRandomisePanning              1057
+#define cbMLShowFM                      1058
+#define IDC_EDIT1                       1059
+#define ebMLType                        1060
+#define baby                            1061
+#define slSNCh0                         1062
+#define btnCentrePSG                    1063
+#define btnCentre2413                   1064
+#define gbPSGChannels                   1064
+#define btnRandomPSG                    1065
+#define btnRandomPSG2                   1066
+#define gbPSGEmulation                  1066
+#define btnRandom2413                   1067
+#define slSNCh1                         1068
+#define gb2413Channels                  1068
+#define slSNCh2                         1069
+#define gb2413Emulation                 1069
+#define sl2413ch7                       1070
+#define slSNCh3                         1071
+#define sl2413ch6                       1072
+#define sl2413ch5                       1073
+#define sl2413ch3                       1074
+#define sl2413ch4                       1075
+#define sl2413ch9                       1076
+#define sl2413ch8                       1077
+#define sl2413ch2                       1078
+#define sl2413ch1                       1079
+#define sl2413bd                        1080
+#define sl2413sd                        1081
+#define sl2413cym                       1082
+#define sl2413tt                        1083
+#define sl2413hh                        1084
 
 // Next default values for new objects
 // 
@@ -87,9 +126,9 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        116
+#define _APS_NEXT_RESOURCE_VALUE        119
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1058
+#define _APS_NEXT_CONTROL_VALUE         1070
 #define _APS_NEXT_SYMED_VALUE           111
 #endif
 #endif

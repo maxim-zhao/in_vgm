@@ -1,19 +1,42 @@
-VGM input plugin 0.31
+VGM input plugin 0.32
 =====================
 
-This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard
-for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes,
-originated by Dave, allowing various systems' games' music to be stored.
-See http://www.smspower.org/music for more information, and to download
-VGM music files.
+PROBLEMS
+========
+
+Here are the things that can go wrong, right at the start so you can 
+find them easily.
+
+1. Some error about "mscvr71.dll"
+2. Plugin doesn't show up in the input plugins list
+
+You need the msvcr71.dll file on your system. Download it from here:
+
+http://www.smspower.org/music/vgmtools/msvcr71.zip
+
+Put it in the same folder as winamp.exe, or in windows\system32. The
+self-installing version of the plugin includes this file.
+
+3. VGM files play too fast
+
+If you have in_gym then disable its VGM handling. It is weird.
+
+
+Introduction
+============
+
+This is a Winamp (2.xx and 5.xx) plugin for playing VGM files. VGM is a
+standard for frame-accurate logging of SN76489/SN76496 and various
+YMxxxx writes, originated by Dave, allowing various systems' games'
+music to be stored. See http://www.smspower.org/music for more
+information, and to download VGM music files.
 
 Open this URL in Winamp to hear a demo:
 
 http://www.smspower.org/music/vgm/demo/Golvellius.m3u
 
-If you got the self-installing EXE version, just restart Winamp.
-
-To use: put in_vgm in Winamp's plugins\ folder, and restart Winamp.
+To use: put in_vgm in Winamp's plugins\ folder, and restart Winamp. If 
+you got the self-installing version then it should already be working.
 
 Load .vgm or .vgz files in Winamp; go to the "File types" preferences
 page to associate these extensions:
@@ -28,24 +51,25 @@ page to associate these extensions:
 
 Be sure to check out the file info and plugin configuration dialogues.
 
-The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki (http://www.
-angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. The YM2612 engine
-is from Gens by Stephane Dallongeville (http://gens.consolemul.com).
-The YM2151 engine is from MAME (http://www.mame.net) and was added by
-BlackAura. It uses Zlib by Jean-loup Gailly and Mark Adler.
+The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki 
+(http://www.angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. The 
+YM2612 engine is from Gens by Stephane Dallongeville 
+(http://gens.consolemul.com). The YM2151 engine is from MAME 
+(http://www.mame.net) and was added by BlackAura. It uses Zlib by 
+Jean-loup Gailly and Mark Adler.
 
 
 Dialogue boxes
 ==============
 
-1. VGM file & GD3 information
+1. VGM file & GD3 tag information
 
 To open:
 - In the main window, press Alt+3; or double-click on the track title;
   or right-click on the track title and choose "File info".
 - In the playlist editor, select some files and press Alt+3; or right-
-  click and choose "File info"; or press the "MISC" button, choose "
-  FILE INF" and then "File info..."; or right-click the "MISC" button,
+  click and choose "File info"; or press the "MISC" button, choose
+  "FILE INF" and then "File info..."; or right-click the "MISC" button,
   choose " File info" and then "File info...".
 
 This shows you information about the file and, if it has a GD3
@@ -57,17 +81,15 @@ Choose "English" or "Japanese" to display the GD3 information for that
 language, if available.
 
 If you see something like "????" for a GD3 entry then your version of
-Windows doesn't support translation from Unicode to MBCS. This is a
-major bug caused by Microsoft being too lazy to code functions that are
-in the Win32 API.
+Windows doesn't support Unicode, or translation from Unicode to a valid
+MBCS.
 
-Click on "View GD3 in browser" to open either the Winamp MiniBrowser or
-your regular web browser, with a page showing the GD3 tag. The reason
-this is done is, HTML 4.0 compliant browsers *do* have the ability to
-display Unicode text. You'll need to have appropriate fonts installed.
-
-Click on "smspower.org/music" to open the SMS Power Music section in
-the MiniBrowser or your regular web browser.
+Click on "View GD3 in browser" to open either "Now Playing" (the
+MiniBrowser in older versions of Winamp) or your regular web browser,
+with a page showing the GD3 tag. The reason this is done is, HTML 4.0
+compliant browsers *do* generally have the ability to display Unicode
+text. You'll need to have appropriate fonts installed (Arial Unicode is 
+a good one to have).
 
 Click on "Configure plugin..." to open the plugin configuration
 dialogue box.
@@ -80,14 +102,14 @@ abort showing it once per file.
 2. VGM plugin configuration
 
 To open:
-- Open the "VGM file & GD3 information" dialogue box; then press the
+- Open the "VGM file & GD3 tag information" dialogue box; then press the
   "Configure plugin..." button or press Alt+P.
 - Or open the Winamp Preferences dialogue box (Right-click or menu
   button -> Options -> Preferences...; or press Ctrl+P), choose the
   Plug-ins -> Input page, then double-click on the "VGM input plugin
   v0.xx ( IN_VGM.DLL)" item, or select it and click on the Configure
   button.
-
+  
 Playback tab:
 
 - Looping:
@@ -96,15 +118,15 @@ Playback tab:
     it has one. A value of 0 will play through the looped section once.
   "Then fade out over x ms"
     When repeating looped sections, there is no "end" to the music.
-    Enter a time in ms (1000 = 1s) over which the music will fade out
+    Enter a time in ms (1000ms = 1s) over which the music will fade out
     after looping the desired number of times. A setting of 0 will give
     no fadeout.
 
-- Pause between tracks
+- Pause after non-looped tracks
   "Pause x ms"
     Even when a track does have an end, it does not sound good if the
-    next track follows on immediately. Enter a time in ms (1000 = 1s) to
-    pause at the end of each track.
+    next track follows on immediately. Enter a time in ms (1000ms = 1s)
+    to pause at the end of each track.
 
 - Playback rate:
   "Recorded rate"
@@ -124,13 +146,84 @@ Playback tab:
   The effect will only be heard when you restart the track, or when the
   next track starts.
 
-- Quality/emulation:
-  "High quality YM2413"
-    This runs the YM2413 engine at the true clock rate instead of
-    44100Hz, and resamples down. The effect is marginal.
+- Volume
   "Overdrive"
     Amplifies all sound to levels that are in danger of being clipped,
     but are similar to regular MP3s so visualisations work better.
+
+GD3 tags tab:
+
+- Data formatting:
+  "Prefer Japanese text"
+    If checked, the media library and advanced title formatting will
+    use Japanese text if available, otherwise English. If unchecked,
+    English text is used in preference to Japanese.
+  "Append (FM) to game name if applicable"
+    To make it easier to tell FM and PSG soundtracks apart, this will
+    make the returned game name (given as the album name) end with
+    "(FM)". Note that some emulators incorrectly specify an FM clock in
+    the VGM file, causing this to be displayed wrongly.
+
+- File Type:
+  "Return file type ID"
+    Winamp's Media Library comes by default with filtered views for
+    "Audio" and "Video", as well as other views for htings like
+    recently played files. If you right-click on the tree you can edit
+    them and add new views for more advanced filters.
+
+    If, like me, you don't want VGMs to play mixed in with your regular
+    MP3s, you can use this to make it very easy to filter VGMs out of
+    the "Audio" view and into another. Here's the procedure:
+
+    1. Change the number to another value (I use 262144)
+    2. Add a new view to the Media Library
+    3. On the advanced tab, change the query to TYPE=262144 (or whatever
+       number you chose)
+    4. Refresh your Media Library from the Library button.
+
+    Note that Winamp does not define meanings for values other than 0
+    (audio) and 1 (video). It might in later versions, so try to use a
+    value that is unlikely to be used in the future (2 is more likely
+    to be used than 262144).
+
+- Now Playing:
+  "Display GD3 tags as HTML in "Now Playing""
+    If checked, displaying a GD3 tag as HTML (using the "View GD3 in 
+    browser" button described above) will use Now Playing. If unckecked, 
+    it will use your regular web browser.
+  "Display them automatically"
+    If checked, GD3 tags will automatically be displayed in Now Playing
+    when tracks start. This will also block most other parts of Winamp
+    from changing the Now Playing page while a VGM file is playing.
+  "Open "Now Playing" if it is closed"
+    If checked, when auto-displaying GD3 tags, Now Playing will be
+    opened if it is closed.
+  Note that in older versions of Winamp, the MiniBrowser is the
+  equivalent of Now Playing.
+
+- Legacy title formatting
+    Enter text to control what title Winamp shows for the file. Enter
+    special codes like "%t" to insert various GD3 entries. If the file
+    has no GD3 tag then the filename will be used as the title.
+    Winamp 5's Advanced Title Formatting bypasses this, instead using
+    data from the Media Library.
+
+PSG tab:
+
+- Channel control
+  If the current track includes PSG data, the checkbozes will allow you
+  to enable and disable indivisual sound channels.
+  The trackbars allow you to apply "fake" stereo to the channels. This
+  can result in a more pleasing sound but is totally inaccurate :) The
+  original chip was strictly mono.
+  That is, apart from the Game Gear's extended version which allows
+  "digital" stereo (where the sound is either 100% left, centre or 100%
+  right). If the track includes such data then the "fake" stereo fr the
+  affected channel is overridden.
+  Press the "Centre all" button to reset all channels to a centre
+  position.
+
+- Emulation
   "Louder PSG noise"
     Makes the PSG's noise twice as loud which, while inaccurate, sounds
     better and more like an SMS played through a TV.
@@ -139,78 +232,42 @@ Playback tab:
     if unchecked, values taken from a real SMS's output are used
     instead. These values have reduced definition at high volume levels.
 
-Muting tab:
-  Checkboxes will be available for each chip used by the VGM file. If a
-  checkbox is checked then that channel's output will be heard. Uncheck
-  a box to disable the corresponding channel.
+YM2413 tab:
 
-  "Immediate update"
-    If this is selected, the effect will be instant, but it may be
-    little "jerky". If it is not selected then the effect will take the
-    length of the output buffer (usually two seconds) to be heard.
+- Channel control
+  If the current track includes PSG data, the checkbozes will allow you
+  to enable and disable indivisual sound channels.
+  Stereo control is not yet available for this chip.
+  
+- Emulation
+  "High quality YM2413"
+    This runs the YM2413 engine at the true clock rate and resamples to
+    44100Hz. The effect is marginal.
     
-  "Keep muting when track changes"
-    If checked, muting will remain when the track changes; otherwise all 
-    channels are unmuted.
+YM2612/YM2151 tab:
 
-Title/GD3 tab:
-  "Title formatting"
-    Enter text to control what tile Winamp shows for the file. Enter
-    special codes like "%t" to insert various GD3 entries. If the file
-    has no GD3 tag then the filename will be used as the title. Winamp
-    5's Advanced Title Formatting bypasses this, instead using data from
-    the Media Library.
+"Enable YM2612"
+"Enable YM2151"
+  If the corresponding chip is being used, the checkbox will allow you
+  to disable its output. Per-channel control may be added in the future.
 
-  GD3/HTML display:
-  "Use MiniBrowser to display HTML"
-    If checked, anything that can use either the MiniBrowser of your
-    regular web browser (see "VGM file & GD3 information" above) will
-    use the MiniBrowser. If unckecked, it will use your regular web
-    browser.
-  "Auto-display GD3 tags..."
-    If checked, GD3 tags will automatically be displayed in the
-    MiniBrowser when tracks start.
-  "Open MiniBrowser if it is closed" 
-    If checked, when auto-displaying GD3 tags, the MiniBrowser will be
-    opened if it is closed.
-    
-Media Library tab:
-  Data formatting:
-    "Prefer Japanese text"
-      If checked, the media library and advanced title formatting will
-      use Japanese text if available, otherwise English. If unchecked,
-      English text is used in preference to Japanese.
-      
-    "Append (FM) to game name if applicable"
-      To make it easier to tell FM and PSG soundtracks apart, this
-      will make the returned game name (given as the album name)
-      end with "(FM)". Note that some emulators incorrectly specify
-      an FM clock in the VGM file, causing this to be displayed
-      wrongly.
-      
-  File Type:
-    "Return file type ID"
-      Winamp's Media Library comes by default with filtered views for
-      "Audio" and "Video", as well as other views for htings like
-      recently played files. If you right-click on the tree you can edit
-      them and add new views for more advanced filters.
-      
-      If, like me, you don't want VGMs to play mixed in with your
-      regular MP3s, you can use this to make it very easy to filter
-      VGMs out of the "Audio" view and into another. Here's the procedure:
-      1. Change the number to another value (I use 262144)
-      2. Add a new view to the Media Library
-      3. On the advanced tab, change the query to TYPE=262144 (or whatever
-         number you chose)
-      4. Refresh your Media Library from the Library button.
-      
-      Note that Winamp does not define meanings for values other than
-      0 (audio) and 1 (video). It might in later versions, so try to use
-      a value that is unlikely to be used in the future (2 is more
-      likely to be used than 262144).
-      
+Bottom part of window:
+
+"Immediate update"
+  If this is selected, the effect of changing some of the settings will 
+  be instant, but it may introduce jumps or pauses to the sound, 
+  depending on the output plugin and the type of VGM file playing. If
+  it is not selected then the effect will take the length of the output
+  buffer (usually two seconds) to be heard.
+
+"Keep muting when track changes"
+  If checked, per-muting will remain when the track changes; otherwise
+  all channels are unmuted.
+
+
 Note that cancelling this dialogue box does *not* restore the previous
-settings.
+settings for many options.
+
 
 Actually asked questions
 ========================
@@ -226,7 +283,9 @@ Winamp is older you should update.
 Yes, it is. "Frequency modulation" means using one sine wave to change
 the frequency of another, thereby producing quite complex waveforms
 from two simple sine waves, a Good Thing when it comes to making cheap
-sound chips.
+sound chips. Although one source says "Note that the name 'FM' is a
+misnomer; in actual fact the Yamaha chips all use phase modulation (PM)
+to create their sounds." So now you know.
 
 > The latest VGM plugin is much slower on my p133. The last one works
 > fine, but with the new one the songs stops and then continues after a
@@ -281,6 +340,32 @@ Stereo" is quite cool.
 History:
 ========
 
+0.32 30/10/05
+=============
+
++ Added icons to config dialogue
++ Fixed issue with Now Playing loading information pages over the HTML
+  information display
++ Added file length information into HTML information display
++ Updated downloader code to use Winamp's built-in downloader instead of
+  using IE
++ Added msvcrt71.dll to installer
++ Enabled support for VGM 1.10
++ Re-integrated and extended Charles' MAME-style SMS Plus conversion of
+  sn76489.c to hopefully make it more discoverable and re-usable by
+  others
++ Added PSG panning support
++ Reorganised config interface
++ Added magical track number extraction for the Media Library by
+  guessing the filename of the associated playlist file and finding
+  which number entry it is in there - works well for most SMS Power
+  releases, at least
++ Fixed Media Library year problems
++ Improved time formatting
++ Added YM2413 panning support
++ Added panning Gaussian randomisation
++ Improved emulation of non-Sega variant SN76489 for the Beeb fans
+
 0.31 12/12/04
 =============
 
@@ -311,7 +396,7 @@ History:
 + Added WinXP "visual styles" support
 + Japanese text now shows under WinXP (hopefully)
 + Seeking bugs fixed
-+ Cancelling the File Info dialogue box for a group of files now works 
++ Cancelling the File Info dialogue box for a group of files now works
   properly
 + Improved mixing
 + Volume levels now match better for different chips

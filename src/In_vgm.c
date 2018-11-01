@@ -2,7 +2,7 @@
 // in_vgm
 // VGM audio input plugin for Winamp
 // http://www.smspower.org/music
-// by Maxim <maxim@mwos.cjb.net> in 2001-2004
+// by Maxim <maxim@mwos.cjb.net> in 2001-2005
 // with help from BlackAura in March and April 2002
 //-----------------------------------------------------------------
 
@@ -15,31 +15,34 @@
 #define MAMEYM2612RelativeVol 3  // Mega Drive/Genesis
 #define YM2151RelativeVol 4 // CPS1
 
-#define PLUGINNAME "VGM input plugin v0.31"
+#define PLUGINNAME "VGM input plugin v0.32"// beta test"   " "__DATE__" "__TIME__
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
 #define MINGD3VERSION 0x100
 #define REQUIREDGD3MAJORVER 0x100
 
+#define SN76489_NUM_CHANNELS 4
+#define YM2413_NUM_CHANNELS 14
+
 // PSG has 4 channels, 2^4-1=0xf
 #define SN76489_MUTE_ALLON 0xf
 // YM2413 has 14 (9 + 5 percussion), BUT it uses 1=mute, 0=on
-#define YM2413MUTE_ALLON 0
+#define YM2413_MUTE_ALLON 0
 // These two are preliminary and may change
-#define YM2612MUTE_ALLON 0
-#define YM2151MUTE_ALLON 0
+#define YM2612_MUTE_ALLON 0
+#define YM2151_MUTE_ALLON 0
 
 #include <windows.h>
 #include <stdio.h>
 #include <float.h>
 #include <commctrl.h>
+#include <math.h>
 #include <zlib.h>
-#include <urlmon.h>
 
 #include "in2.h"
 
-#define EMU2413_COMPACTION
+// #define EMU2413_COMPACTION
 #include "emu2413.h"
 
 #include "sn76489.h"
@@ -64,7 +67,11 @@ typedef unsigned short wchar;  // For Unicode strings
 HANDLE PluginhInst;
 
 // avoid CRT. Evil. Big. Bloated.
+#ifdef _DLL
 BOOL WINAPI _DllMainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved) {
+#else
+BOOL WINAPI _mainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved) {
+#endif
   PluginhInst=hInst;
   return TRUE;
 }
@@ -97,24 +104,32 @@ OPLL *opll;  // EMU2413 structure
 
 #define USINGCHIP(chip) (FMChips&chip)
 
+#define VGMIDENT 0x206d6756 // "Vgm "
+
 struct TVGMHeader {
-  char  VGMIdent[4];            // "Vgm "
-  long  EoFOffset;              // relative offset (from this point, 0x04) of the end of file
-  long  Version;                // 0x00000102 for 1.02
-  long  PSGClock;               // typically 3579545, 0 for no PSG
-  long  FMClock;                // typically 3579545, 0 for no FM
-  long  GD3Offset;              // relative offset (from this point, 0x14) of the Gd3 tag, 0 if not present
-  long  TotalLength;            // in samples
-  long  LoopOffset;             // relative again (to 0x1c), 0 if no loop
-  long  LoopLength;             // in samples, 0 if no loop
-  long  RecordingRate;          // in Hz, for speed-changing, 0 for no changing
-  long  PSGWhiteNoiseFeedback;  // Feedback pattern for white noise generator; if <v1.02, substitute default of 0x0009
+  unsigned long VGMIdent;               // "Vgm "
+  unsigned long EoFOffset;              // relative offset (from this point, 0x04) of the end of file
+  unsigned long Version;                // 0x00000110 for 1.10
+  unsigned long PSGClock;               // typically 3579545, 0 for no PSG
+  unsigned long YM2413Clock;            // typically 3579545, 0 for no YM2413
+  unsigned long GD3Offset;              // relative offset (from this point, 0x14) of the GD3 tag, 0 if not present
+  unsigned long TotalLength;            // in samples
+  unsigned long LoopOffset;             // relative again (to 0x1c), 0 if no loop
+  unsigned long LoopLength;             // in samples, 0 if no loop
+  unsigned long RecordingRate;          // in Hz, for speed-changing, 0 for no changing
+  unsigned short PSGWhiteNoiseFeedback; // Feedback pattern for white noise generator; if <=v1.01, substitute default of 0x0009
+  unsigned char PSGShiftRegisterWidth;  // Shift register width for noise channel; if <=v1.01, substitute default of 16
+  unsigned char Reserved;
+  unsigned long YM2612Clock;            // typically 3579545, 0 for no YM2612
+  unsigned long YM2151Clock;            // typically 3579545, 0 for no YM2151
 };
 
+#define GD3IDENT 0x20336447 // "Gd3 "
+
 struct TGD3Header {
-  char  IDString[4];  // "Gd3 "
-  long  Version;      // 0x000000100 for 1.00
-  long  Length;       // Length of string data following this point
+  unsigned long GD3Ident;     // "Gd3 "
+  unsigned long Version;      // 0x000000100 for 1.00
+  unsigned long Length;       // Length of string data following this point
 };
 
 int killDecodeThread=0;                       // the kill switch for the decode thread
@@ -134,7 +149,9 @@ int
   LoopLengthInms,     // length of looped section in ms
   LoopOffset,         // File offset of looped data start
   PSGClock=0,         // SN76489 clock rate
-  FMClock=0,          // YM2413 (and other) clock rate
+  YM2413Clock=0,      // FM clock rates
+  YM2612Clock=0,      // 
+  YM2151Clock=0,      // 
   FMChips=0,          // BlackAura - FM Chips enabled
   SeekToSampleNumber, // For seeking
   FileInfoJapanese,   // Whether to show Japanese in the info dialogue
@@ -152,11 +169,16 @@ int
   MutePersistent=0,
   MLJapanese,
   MLShowFM,
-  MLType;
+  MLType,
+  SN76489_Mute = SN76489_MUTE_ALLON,
+  SN76489_VolumeArray,
+  SN76489_Pan [ SN76489_NUM_CHANNELS ], // panning 0..254, 127 is centre
+  YM2413_Pan [ YM2413_NUM_CHANNELS ],
+  RandomisePanning;
 long int 
-  YM2413Channels=YM2413MUTE_ALLON,  // backup when stopped. PSG does it itself.
-  YM2612Channels=YM2612MUTE_ALLON,
-  YM2151Channels=YM2151MUTE_ALLON;
+  YM2413Channels=YM2413_MUTE_ALLON,  // backup when stopped. PSG does it itself.
+  YM2612Channels=YM2612_MUTE_ALLON,
+  YM2151Channels=YM2151_MUTE_ALLON;
 char
   TrackTitleFormat[100],      // Track title formatting
   CurrentURLFilename[MAX_PATH],  // Filename current URL has been saved to
@@ -201,6 +223,21 @@ void OpenURL(char *url) {
   else ShellExecute(mod.hMainWindow,NULL,TextFileName,NULL,NULL,SW_SHOWNORMAL);
 };
 
+char * printtime(char *s,double timeinseconds) {
+  int hours=(int)timeinseconds/3600;
+  int mins=(int)timeinseconds/60 - hours*60;
+  double secs=timeinseconds - mins*60;
+
+  if(hours)
+    // unlikely
+    sprintf(s,"%d:%02d:%04.1f",hours,mins,secs);
+  else if(mins)
+    sprintf(s,"%d:%04.1f",mins,secs);
+  else
+    sprintf(s,"%.1fs",secs);
+
+  return s;
+}
 
 //-----------------------------------------------------------------
 // Show GD3 info as HTML
@@ -213,6 +250,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
   wchar *GD3string,*p;
   int i,j;
   char *url;
+  char tempstr[256];
   const char What[10][32]={
     "Track title",
     "",
@@ -232,7 +270,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
 
   if (
     (i<sizeof(VGMHeader)) ||                    // file too short/error reading
-    (strncmp(VGMHeader.VGMIdent,"Vgm ",4)!=0) ||          // no marker
+    (VGMHeader.VGMIdent != VGMIDENT) ||          // no marker
     (VGMHeader.Version<MINVERSION) ||                // below min ver
     ((VGMHeader.Version & REQUIREDMAJORVER)!=REQUIREDMAJORVER) ||  // != required major ver
     (!VGMHeader.GD3Offset)                      // no GD3
@@ -244,7 +282,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
   i=gzread(fh,&GD3Header,sizeof(GD3Header));
   if (
     (i<sizeof(GD3Header)) ||                    // file too short/error reading
-    (strncmp(GD3Header.IDString,"Gd3 ",4)!=0) ||          // no marker
+    (GD3Header.GD3Ident != GD3IDENT ) ||          // no marker
     (GD3Header.Version<MINGD3VERSION) ||              // below min ver
     ((GD3Header.Version & REQUIREDGD3MAJORVER)!=REQUIREDGD3MAJORVER)// != required major ver
   ) {
@@ -264,6 +302,20 @@ void InfoInBrowser(char *filename, int ForceOpen) {
   fputs(
     #include "htmlbefore.txt"
     ,f);
+
+  fprintf(f,"<tr><td class=what>Length</td><td colspan=2 class=is>%s",printtime(tempstr,VGMHeader.TotalLength/44100.0));
+  if(VGMHeader.LoopLength>0) {
+    if(VGMHeader.TotalLength-VGMHeader.LoopLength>22050) {
+      fprintf(f," (%s intro",printtime(tempstr,(VGMHeader.TotalLength-VGMHeader.LoopLength)/44100.0));
+      fprintf(f," and %s loop)",printtime(tempstr,VGMHeader.LoopLength/44100.0));
+    } else
+      fprintf(f," (looped)");
+  } else {
+    fprintf(f," (no loop)");
+  }
+
+  fprintf(f,"</td></tr>");
+
   for (i=0;i<8;++i) {
     if (i%2-1) fprintf(f,"<tr><td class=what>%s</td><td class=is>",What[i]);
     if (wcslen(GD3string))  // have a string
@@ -324,17 +376,53 @@ void UpdateIfPlaying() {
   ) setoutputtime(getoutputtime());
 }
 
+/* some ancient C newsgroup FAQ had this */
+double gaussrand()
+{
+	static double V1, V2, S;
+	static int phase = 0;
+	double X;
+
+	if(phase == 0) {
+		do {
+			double U1 = (double)rand() / RAND_MAX;
+			double U2 = (double)rand() / RAND_MAX;
+
+			V1 = 2 * U1 - 1;
+			V2 = 2 * U2 - 1;
+			S = V1 * V1 + V2 * V2;
+			} while(S >= 1 || S == 0);
+
+		X = V1 * sqrt(-2 * log(S) / S);
+	} else
+		X = V2 * sqrt(-2 * log(S) / S);
+
+	phase = 1 - phase;
+
+	return X;
+}
+
+int random_stereo()
+{
+  // return a random integer from 0 to 255 for stereo
+  // Normal distribution, mean 127, S.D. 50
+  int n = (int)(127 + gaussrand() * 50);
+  if ( n > 255 ) n = 254;
+  if ( n < 0 ) n = 0;
+  return n;
+}
 
 //-----------------------------------------------------------------
 // Configuration dialogue
 //-----------------------------------------------------------------
-#define NumCfgTabChildWnds 4
+#define NumCfgTabChildWnds 5
 HWND CfgTabChildWnds[NumCfgTabChildWnds];  // Holds child windows' HWnds
 // Defines to make it easier to place stuff where I want
-#define CfgPlayback  CfgTabChildWnds[0]
-#define CfgMuting  CfgTabChildWnds[1]
-#define CfgGD3    CfgTabChildWnds[2]
-#define CfgML     CfgTabChildWnds[3]
+#define CfgPlayback CfgTabChildWnds[0]
+#define CfgTags     CfgTabChildWnds[1]
+#define CfgPSG      CfgTabChildWnds[2]
+#define Cfg2413     CfgTabChildWnds[3]
+#define CfgOthers   CfgTabChildWnds[4]
 // Dialogue box tabsheet handler
 BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam);
 void MakeTabbedDialogue(HWND hWndMain) {
@@ -342,17 +430,29 @@ void MakeTabbedDialogue(HWND hWndMain) {
   TC_ITEM NewTab;
   HWND TabCtrlWnd=GetDlgItem(hWndMain,tcMain);
   RECT TabDisplayRect,TabRect;
+  HIMAGELIST il;
   int i;
+  // Load images for tabs
+  InitCommonControls(); // required before doing imagelist stuff
+  il=ImageList_LoadImage(PluginhInst,(LPCSTR)tabicons,16,0,RGB(255,0,255),IMAGE_BITMAP,LR_CREATEDIBSECTION);
+  TabCtrl_SetImageList(TabCtrlWnd,il);
   // Add tabs
-  NewTab.mask=TCIF_TEXT;
+	NewTab.mask=TCIF_TEXT | TCIF_IMAGE;
   NewTab.pszText="Playback";
+  NewTab.iImage=0;
   TabCtrl_InsertItem(TabCtrlWnd,0,&NewTab);
-  NewTab.pszText="Muting";
+  NewTab.pszText="GD3 tags";
+  NewTab.iImage=1;
   TabCtrl_InsertItem(TabCtrlWnd,1,&NewTab);
-  NewTab.pszText="Title / GD3";
+  NewTab.pszText="PSG";
+  NewTab.iImage=2;
   TabCtrl_InsertItem(TabCtrlWnd,2,&NewTab);
-  NewTab.pszText="Media Library";
+  NewTab.pszText="YM2413";
+  NewTab.iImage=3;
   TabCtrl_InsertItem(TabCtrlWnd,3,&NewTab);
+  NewTab.pszText="YM2612/YM2151";
+  NewTab.iImage=4;
+  TabCtrl_InsertItem(TabCtrlWnd,4,&NewTab);
   // Get display rect
   GetWindowRect(TabCtrlWnd,&TabDisplayRect);
   GetWindowRect(hWndMain,&TabRect);
@@ -360,10 +460,11 @@ void MakeTabbedDialogue(HWND hWndMain) {
   TabCtrl_AdjustRect(TabCtrlWnd,FALSE,&TabDisplayRect);
   
   // Create child windows (resource hog, I don't care)
-  CfgPlayback =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgPlayback,  hWndMain,ConfigDialogProc);
-  CfgMuting   =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgMuting,  hWndMain,ConfigDialogProc);
-  CfgGD3      =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgGD3,    hWndMain,ConfigDialogProc);
-  CfgML       =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgML,     hWndMain,ConfigDialogProc);
+  CfgPlayback =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgPlayback,hWndMain,ConfigDialogProc);
+  CfgTags      =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgTags,    hWndMain,ConfigDialogProc);
+  CfgPSG      =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgPSG,     hWndMain,ConfigDialogProc);
+  Cfg2413     =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgYM2413,  hWndMain,ConfigDialogProc);
+  CfgOthers   =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgOthers,  hWndMain,ConfigDialogProc);
   // Enable WinXP styles
   {
     HINSTANCE dllinst=LoadLibrary("uxtheme.dll");
@@ -393,92 +494,193 @@ void MakeTabbedDialogue(HWND hWndMain) {
 // Dialogue box callback function
 BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam) {
   switch (wMessage) {  // process messages
-    case WM_INITDIALOG:  {// Initialise dialogue
+    case WM_INITDIALOG: { // Initialise dialogue
       int i;
       if (GetWindowLong(DlgWin,GWL_STYLE)&WS_CHILD) return FALSE;
       MakeTabbedDialogue(DlgWin);
-      if (PSGClock) { // Check PSG channel checkboxes
-        for (i=0;i<4;i++) CheckDlgButton(CfgMuting,cbTone1+i,((SN76489_Mute & (1<<i))>0));
-        CheckDlgButton(CfgMuting,cbPSGToneAll,((SN76489_Mute&0x7)==0x7));
-      } else {  // or disable them
-        for (i=0;i<4;i++) EnableWindow(GetDlgItem(CfgMuting,cbTone1+i),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,cbPSGToneAll),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,lblPSGPerc),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,gbPSG),FALSE);
-      }
-      if USINGCHIP(FM_YM2413) {  // Check YM2413 FM channel checkboxes
-        for (i=0;i<15;i++) CheckDlgButton(CfgMuting,cbYM24131+i,!((YM2413Channels & (1<<i))>0));
-        CheckDlgButton(CfgMuting,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
-        CheckDlgButton(CfgMuting,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
-      } else {
-        for (i=0;i<15;i++) EnableWindow(GetDlgItem(CfgMuting,cbYM24131+i),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,cbYM2413ToneAll),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,cbYM2413PercAll),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,lblExtraTone),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,lblExtraToneNote),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,gbYM2413),FALSE);
-      }
-      if USINGCHIP(FM_YM2612) {  // Check YM2612 FM channel checkboxes
-        CheckDlgButton(CfgMuting,cbYM2612All,(YM2612Channels==0));
-      } else {
-        EnableWindow(GetDlgItem(CfgMuting,cbYM2612All),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,gbYM2612),FALSE);
-      }
-      if USINGCHIP(FM_YM2151) {  // Check YM2151 FM channel checkboxes
-        CheckDlgButton(CfgMuting,cbYM2151All,(YM2151Channels==0));
-      } else {
-        EnableWindow(GetDlgItem(CfgMuting,cbYM2151All),FALSE);
-        EnableWindow(GetDlgItem(CfgMuting,gbYM2151),FALSE);
-      }
-      // Immediate update checkbox
-      CheckDlgButton(CfgMuting,cbMuteImmediate,ImmediateUpdate);
-      // Persistent muting checkbox
-      CheckDlgButton(CfgMuting,cbMutePersistent,MutePersistent);
+
+      // Playback tab -----------------------------------------------------------
+#define WND CfgPlayback
       // Set loop count
-      SetDlgItemInt(CfgPlayback,ebLoopCount,NumLoops,FALSE);
+      SetDlgItemInt(WND,ebLoopCount,NumLoops,FALSE);
       // Set fadeout length
-      SetDlgItemInt(CfgPlayback,ebFadeOutLength,LoopingFadeOutms,FALSE);
+      SetDlgItemInt(WND,ebFadeOutLength,LoopingFadeOutms,FALSE);
       // Set between-track pause length
-      SetDlgItemInt(CfgPlayback,ebPauseLength,PauseBetweenTracksms,FALSE);
-      // Set title format text
-      SetDlgItemText(CfgGD3,ebTrackTitle,TrackTitleFormat);
-      // Speed settings
+      SetDlgItemInt(WND,ebPauseLength,PauseBetweenTracksms,FALSE);
+      // Playback rate
       switch (PlaybackRate) {
         case 0:
-          CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRateOriginal);
+          CheckRadioButton(WND,rbRateOriginal,rbRateOther,rbRateOriginal);
           break;
         case 50:
-          CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRate50);
+          CheckRadioButton(WND,rbRateOriginal,rbRateOther,rbRate50);
           break;
         case 60:
-          CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRate60);
+          CheckRadioButton(WND,rbRateOriginal,rbRateOther,rbRate60);
           break;
         default:
-          CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRateOther);
+          CheckRadioButton(WND,rbRateOriginal,rbRateOther,rbRateOther);
           break;
       };
-      EnableWindow(GetDlgItem(CfgPlayback,ebPlaybackRate),(IsDlgButtonChecked(CfgPlayback,rbRateOther)?TRUE:FALSE));
+      EnableWindow(GetDlgItem(WND,ebPlaybackRate),(IsDlgButtonChecked(WND,rbRateOther)?TRUE:FALSE));
       if (PlaybackRate!=0) {
         char tempstr[18];  // buffer for itoa
-        SetDlgItemText(CfgPlayback,ebPlaybackRate,itoa(PlaybackRate,tempstr,10));
+        SetDlgItemText(WND,ebPlaybackRate,itoa(PlaybackRate,tempstr,10));
       } else {
-        SetDlgItemText(CfgPlayback,ebPlaybackRate,"60");
+        SetDlgItemText(WND,ebPlaybackRate,"60");
       };
-      // MB settings
-      CheckDlgButton(CfgGD3,cbUseMB        ,UseMB);
-      CheckDlgButton(CfgGD3,cbAutoMB       ,AutoMB);
-      CheckDlgButton(CfgGD3,cbForceMBOpen  ,ForceMBOpen);
-      EnableWindow(GetDlgItem(CfgGD3,cbAutoMB     ),UseMB);
-      EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
-      // Quality settings
-      CheckDlgButton(CfgPlayback,cbYM2413HiQ      ,YM2413HiQ);
-      CheckDlgButton(CfgPlayback,cbOverDrive      ,Overdrive);
-      CheckDlgButton(CfgPlayback,cbBoostPSGNoise  ,SN76489_BoostNoise);
-      CheckDlgButton(CfgPlayback,cbSmoothPSGVolume,SN76489_VolumeArray);
+      // Volume overdrive
+      CheckDlgButton(WND,cbOverDrive,Overdrive);
+      // Persistent muting checkbox
+      CheckDlgButton(WND,cbMutePersistent,MutePersistent);
+      // randomise panning checkbox
+      CheckDlgButton(WND,cbRandomisePanning,RandomisePanning);
+#undef WND
+
+      // GD3 tab ----------------------------------------------------------------
+#define WND CfgTags
+      // Set title format text
+      SetDlgItemText(WND,ebTrackTitle,TrackTitleFormat);
       // Media Library options
-      CheckDlgButton(CfgML,cbMLJapanese,MLJapanese);
-      CheckDlgButton(CfgML,cbMLShowFM,MLShowFM);
-      SetDlgItemInt(CfgML,ebMLType,MLType,FALSE);
+      CheckDlgButton(WND,cbMLJapanese,MLJapanese);
+      CheckDlgButton(WND,cbMLShowFM,MLShowFM);
+      SetDlgItemInt(WND,ebMLType,MLType,FALSE);
+      // Now Playing settings
+      CheckDlgButton(WND,cbUseMB        ,UseMB);
+      CheckDlgButton(WND,cbAutoMB       ,AutoMB);
+      CheckDlgButton(WND,cbForceMBOpen  ,ForceMBOpen);
+      EnableWindow(GetDlgItem(WND,cbAutoMB     ),UseMB);
+      EnableWindow(GetDlgItem(WND,cbForceMBOpen),UseMB & AutoMB);
+#undef WND
+
+      // PSG tab ----------------------------------------------------------------
+#define WND CfgPSG
+      if (PSGClock) { // Check PSG channel checkboxes
+        for (i=0;i<SN76489_NUM_CHANNELS;i++) CheckDlgButton(WND,cbTone1+i,((SN76489_Mute & (1<<i))>0));
+      } else {  // or disable them
+        for (i=0;i<SN76489_NUM_CHANNELS;i++) EnableWindow(GetDlgItem(WND,cbTone1+i),FALSE);
+        EnableWindow(GetDlgItem(WND,btnRandomPSG),FALSE);
+        EnableWindow(GetDlgItem(WND,btnCentrePSG),FALSE);
+        EnableWindow(GetDlgItem(WND,slSNCh0),FALSE);
+        EnableWindow(GetDlgItem(WND,slSNCh1),FALSE);
+        EnableWindow(GetDlgItem(WND,slSNCh2),FALSE);
+        EnableWindow(GetDlgItem(WND,slSNCh3),FALSE);
+      }
+      CheckDlgButton(WND,cbSmoothPSGVolume,SN76489_VolumeArray);
+      // Panning
+      SendDlgItemMessage(CfgPSG,slSNCh0,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(CfgPSG,slSNCh1,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(CfgPSG,slSNCh2,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(CfgPSG,slSNCh3,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(CfgPSG,slSNCh0,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(CfgPSG,slSNCh1,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(CfgPSG,slSNCh2,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(CfgPSG,slSNCh3,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(CfgPSG,slSNCh0,TBM_SETPOS,TRUE,SN76489_Pan[0]);
+      SendDlgItemMessage(CfgPSG,slSNCh1,TBM_SETPOS,TRUE,SN76489_Pan[1]);
+      SendDlgItemMessage(CfgPSG,slSNCh2,TBM_SETPOS,TRUE,SN76489_Pan[2]);
+      SendDlgItemMessage(CfgPSG,slSNCh3,TBM_SETPOS,TRUE,SN76489_Pan[3]);
+#undef WND
+
+      // YM2413 tab -------------------------------------------------------------
+#define WND Cfg2413
+      if USINGCHIP(FM_YM2413) {  // Check YM2413 FM channel checkboxes
+        for (i=0;i<YM2413_NUM_CHANNELS;i++) CheckDlgButton(WND,cbYM24131+i,!((YM2413Channels & (1<<i))>0));
+        CheckDlgButton(WND,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
+        CheckDlgButton(WND,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
+      } else {
+        for (i=0;i<YM2413_NUM_CHANNELS;i++) EnableWindow(GetDlgItem(WND,cbYM24131+i),FALSE);
+        EnableWindow(GetDlgItem(WND,cbYM2413ToneAll),FALSE);
+        EnableWindow(GetDlgItem(WND,cbYM2413PercAll),FALSE);
+        EnableWindow(GetDlgItem(WND,lblExtraTone),FALSE);
+        EnableWindow(GetDlgItem(WND,lblExtraToneNote),FALSE);
+        EnableWindow(GetDlgItem(WND,gbYM2413),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch1),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch2),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch3),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch4),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch5),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch6),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch7),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch8),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413ch9),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413hh ),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413cym),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413tt ),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413sd ),FALSE);
+        EnableWindow(GetDlgItem(WND,sl2413bd ),FALSE);
+        EnableWindow(GetDlgItem(WND,btnCentre2413),FALSE);
+        EnableWindow(GetDlgItem(WND,btnRandom2413),FALSE);
+      }                             
+      // Panning
+      SendDlgItemMessage(Cfg2413,sl2413ch1,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch2,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch3,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch4,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch5,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch6,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch7,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch8,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413ch9,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413hh ,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413cym,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413tt ,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413sd ,TBM_SETRANGE,0,MAKELONG(0,254));
+      SendDlgItemMessage(Cfg2413,sl2413bd ,TBM_SETRANGE,0,MAKELONG(0,254));
+
+      SendDlgItemMessage(Cfg2413,sl2413ch1,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch2,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch3,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch4,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch5,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch6,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch7,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch8,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413ch9,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413hh ,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413cym,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413tt ,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413sd ,TBM_SETTICFREQ,127,0);
+      SendDlgItemMessage(Cfg2413,sl2413bd ,TBM_SETTICFREQ,127,0);
+
+      SendDlgItemMessage(Cfg2413,sl2413ch1,TBM_SETPOS,TRUE,YM2413_Pan[0]);
+      SendDlgItemMessage(Cfg2413,sl2413ch2,TBM_SETPOS,TRUE,YM2413_Pan[1]);
+      SendDlgItemMessage(Cfg2413,sl2413ch3,TBM_SETPOS,TRUE,YM2413_Pan[2]);
+      SendDlgItemMessage(Cfg2413,sl2413ch4,TBM_SETPOS,TRUE,YM2413_Pan[3]);
+      SendDlgItemMessage(Cfg2413,sl2413ch5,TBM_SETPOS,TRUE,YM2413_Pan[4]);
+      SendDlgItemMessage(Cfg2413,sl2413ch6,TBM_SETPOS,TRUE,YM2413_Pan[5]);
+      SendDlgItemMessage(Cfg2413,sl2413ch7,TBM_SETPOS,TRUE,YM2413_Pan[6]);
+      SendDlgItemMessage(Cfg2413,sl2413ch8,TBM_SETPOS,TRUE,YM2413_Pan[7]);
+      SendDlgItemMessage(Cfg2413,sl2413ch9,TBM_SETPOS,TRUE,YM2413_Pan[8]);
+      SendDlgItemMessage(Cfg2413,sl2413hh ,TBM_SETPOS,TRUE,YM2413_Pan[9]);
+      SendDlgItemMessage(Cfg2413,sl2413cym,TBM_SETPOS,TRUE,YM2413_Pan[10]);
+      SendDlgItemMessage(Cfg2413,sl2413tt ,TBM_SETPOS,TRUE,YM2413_Pan[11]);
+      SendDlgItemMessage(Cfg2413,sl2413sd ,TBM_SETPOS,TRUE,YM2413_Pan[12]);
+      SendDlgItemMessage(Cfg2413,sl2413bd ,TBM_SETPOS,TRUE,YM2413_Pan[13]);
+
+      CheckDlgButton(WND,cbYM2413HiQ,YM2413HiQ);
+#undef WND
+
+      // Other chips tab -------------------------------------------------------
+#define WND CfgOthers
+      if USINGCHIP(FM_YM2612) {  // Check YM2612 FM channel checkboxes
+        CheckDlgButton(WND,cbYM2612All,(YM2612Channels==0));
+      } else {
+        EnableWindow(GetDlgItem(WND,cbYM2612All),FALSE);
+        EnableWindow(GetDlgItem(WND,gbYM2612),FALSE);
+      }
+      if USINGCHIP(FM_YM2151) {  // Check YM2151 FM channel checkboxes
+        CheckDlgButton(WND,cbYM2151All,(YM2151Channels==0));
+      } else {
+        EnableWindow(GetDlgItem(WND,cbYM2151All),FALSE);
+        EnableWindow(GetDlgItem(WND,gbYM2151),FALSE);
+      }
+#undef WND
+
+      // Stuff not in tabs ------------------------------------------------------
+      // Immediate update checkbox
+      CheckDlgButton(DlgWin,cbMuteImmediate,ImmediateUpdate);
+      
 
       SetFocus(DlgWin);
 
@@ -489,6 +691,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
         case IDOK: {    // OK button
           int i;
           BOOL MyBool;
+
+          // Playback tab ------------------------------------------------------
           // Loop count
           i=GetDlgItemInt(CfgPlayback,ebLoopCount,&MyBool,FALSE);
           if (MyBool) NumLoops=i;
@@ -498,8 +702,6 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
           // Between-track pause length
           i=GetDlgItemInt(CfgPlayback,ebPauseLength,&MyBool,FALSE);
           if (MyBool) PauseBetweenTracksms=i;
-          // Track title format
-          GetDlgItemText(CfgGD3,ebTrackTitle,TrackTitleFormat,100);
           // Playback rate
           PlaybackRate=0;
           if (IsDlgButtonChecked(CfgPlayback,rbRate50)) {
@@ -511,29 +713,131 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
             if ((MyBool) && (i>0) && (i<500)) PlaybackRate=i;
           };
           // Persistent muting checkbox
-          MutePersistent=IsDlgButtonChecked(CfgMuting,cbMutePersistent);
+          MutePersistent=IsDlgButtonChecked(CfgPlayback,cbMutePersistent);
+          // Randomise panning checkbox
+          RandomisePanning=IsDlgButtonChecked(CfgPlayback,cbRandomisePanning);
+
+          // Tags tab ----------------------------------------------------------
+          // Track title format
+          GetDlgItemText(CfgTags,ebTrackTitle,TrackTitleFormat,100);
           // Media Library options
-          MLJapanese=IsDlgButtonChecked(CfgML,cbMLJapanese);
-          MLShowFM  =IsDlgButtonChecked(CfgML,cbMLShowFM);
-          i=GetDlgItemInt(CfgML,ebMLType,&MyBool,FALSE);
+          MLJapanese=IsDlgButtonChecked(CfgTags,cbMLJapanese);
+          MLShowFM  =IsDlgButtonChecked(CfgTags,cbMLShowFM);
+          i=GetDlgItemInt(CfgTags,ebMLType,&MyBool,FALSE);
           if (MyBool) MLType=i;
+
+
         };
         EndDialog(DlgWin,0);
         return (TRUE);
       case IDCANCEL:  // [X] button, Alt+F4, etc
         EndDialog(DlgWin,1);
         return (TRUE) ;
-      case cbTone1:
-      case cbTone2:
-      case cbTone3:
-      case cbTone4:
-        SN76489_Mute=(IsDlgButtonChecked(CfgMuting,cbTone1)     )
-          |(IsDlgButtonChecked(CfgMuting,cbTone2) << 1)
-          |(IsDlgButtonChecked(CfgMuting,cbTone3) << 2)
-          |(IsDlgButtonChecked(CfgMuting,cbTone4) << 3);
-        CheckDlgButton(CfgMuting,cbPSGToneAll,((SN76489_Mute&7)==7));
+
+      // PSG tab -------------------------------------------------------------------
+      case cbTone1: case cbTone2: case cbTone3: case cbTone4:
+        SN76489_Mute=
+           (IsDlgButtonChecked(CfgPSG,cbTone1)     )
+          |(IsDlgButtonChecked(CfgPSG,cbTone2) << 1)
+          |(IsDlgButtonChecked(CfgPSG,cbTone3) << 2)
+          |(IsDlgButtonChecked(CfgPSG,cbTone4) << 3);
+        SN76489_SetMute(0,SN76489_Mute);
         UpdateIfPlaying();
         break;
+      case cbSmoothPSGVolume:
+        SN76489_VolumeArray=IsDlgButtonChecked(CfgPSG,cbSmoothPSGVolume);
+        SN76489_SetVolType(0,SN76489_VolumeArray);
+        UpdateIfPlaying();
+        break;
+      case btnCentrePSG: // centre PSG fake stereo sliders
+        SendDlgItemMessage(CfgPSG,slSNCh0,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(CfgPSG,slSNCh1,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(CfgPSG,slSNCh2,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(CfgPSG,slSNCh3,TBM_SETPOS,TRUE,127);
+        SendMessage(DlgWin,WM_HSCROLL,TB_ENDTRACK,0);
+        break;
+      case btnRandomPSG: // randomise PSG fake stereo sliders
+        SendDlgItemMessage(CfgPSG,slSNCh0,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(CfgPSG,slSNCh1,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(CfgPSG,slSNCh2,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(CfgPSG,slSNCh3,TBM_SETPOS,TRUE,random_stereo());
+        SendMessage(DlgWin,WM_HSCROLL,TB_ENDTRACK,0);
+        break;
+
+       
+       // YM2413 tab ----------------------------------------------------------------
+      case cbYM24131:   case cbYM24132:   case cbYM24133:   case cbYM24134:
+      case cbYM24135:   case cbYM24136:   case cbYM24137:   case cbYM24138:
+      case cbYM24139:   case cbYM241310:  case cbYM241311:  case cbYM241312:
+      case cbYM241313:  case cbYM241314: {
+        int i;
+        YM2413Channels=0;
+        for (i=0;i<YM2413_NUM_CHANNELS;i++) YM2413Channels|=(!IsDlgButtonChecked(Cfg2413,cbYM24131+i))<<i;
+        if USINGCHIP(FM_YM2413) {
+          OPLL_setMask(opll,YM2413Channels);
+          UpdateIfPlaying();
+        }
+        CheckDlgButton(Cfg2413,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
+        CheckDlgButton(Cfg2413,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
+        break;
+      };
+      case cbYM2413ToneAll: {
+        int i;
+        const int Checked=IsDlgButtonChecked(Cfg2413,cbYM2413ToneAll);
+        for (i=0;i<9;i++) CheckDlgButton(Cfg2413,cbYM24131+i,Checked);
+        PostMessage(Cfg2413,WM_COMMAND,cbYM24131,0);
+        break;
+      };
+      case cbYM2413PercAll: {
+        int i;
+        const int Checked=IsDlgButtonChecked(Cfg2413,cbYM2413PercAll);
+        for (i=0;i<5;i++) CheckDlgButton(Cfg2413,cbYM241310+i,Checked);
+        PostMessage(Cfg2413,WM_COMMAND,cbYM24131,0);
+        break;
+      };
+      case cbYM2413HiQ:
+        YM2413HiQ=IsDlgButtonChecked(Cfg2413,cbYM2413HiQ);
+        if USINGCHIP(FM_YM2413) {
+          OPLL_set_quality(opll,YM2413HiQ);
+          UpdateIfPlaying();
+        }
+        break;
+      case btnCentre2413: // centre YM2413 fake stereo sliders
+        SendDlgItemMessage(Cfg2413,sl2413ch1,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch2,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch3,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch4,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch5,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch6,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch7,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch8,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413ch9,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413hh ,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413cym,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413tt ,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413sd ,TBM_SETPOS,TRUE,127);
+        SendDlgItemMessage(Cfg2413,sl2413bd ,TBM_SETPOS,TRUE,127);
+        SendMessage(DlgWin,WM_HSCROLL,TB_ENDTRACK,0);
+        break;
+      case btnRandom2413: // randomise YM2413 fake stereo sliders
+        SendDlgItemMessage(Cfg2413,sl2413ch1,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch2,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch3,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch4,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch5,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch6,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch7,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch8,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413ch9,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413hh ,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413cym,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413tt ,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413sd ,TBM_SETPOS,TRUE,random_stereo());
+        SendDlgItemMessage(Cfg2413,sl2413bd ,TBM_SETPOS,TRUE,random_stereo());
+        SendMessage(DlgWin,WM_HSCROLL,TB_ENDTRACK,0);
+        break;
+
+      // Playback tab --------------------------------------------------------------
       case rbRateOriginal:
       case rbRate50:
       case rbRate60:
@@ -542,96 +846,86 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
         EnableWindow(GetDlgItem(CfgPlayback,ebPlaybackRate),((LOWORD(wParam)==rbRateOther)?TRUE:FALSE));
         if (LOWORD(wParam)==rbRateOther) SetFocus(GetDlgItem(CfgPlayback,ebPlaybackRate));
         break;
-      case cbYM24131:    case cbYM24132:    case cbYM24133:    case cbYM24134:
-      case cbYM24135:    case cbYM24136:    case cbYM24137:    case cbYM24138:
-      case cbYM24139:    case cbYM241310:  case cbYM241311:  case cbYM241312:
-      case cbYM241313:  case cbYM241314: {
-        int i;
-        YM2413Channels=0;
-        for (i=0;i<15;i++) YM2413Channels|=(!IsDlgButtonChecked(CfgMuting,cbYM24131+i))<<i;
-        if USINGCHIP(FM_YM2413) {
-          OPLL_setMask(opll,YM2413Channels);
-          UpdateIfPlaying();
-        }
-        CheckDlgButton(CfgMuting,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
-        CheckDlgButton(CfgMuting,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
+      case cbOverDrive:
+        Overdrive=IsDlgButtonChecked(CfgPlayback,cbOverDrive);
+        UpdateIfPlaying();
         break;
-      };
-      case cbYM2413ToneAll: {
-        int i;
-        const int Checked=IsDlgButtonChecked(CfgMuting,cbYM2413ToneAll);
-        for (i=0;i<9;i++) CheckDlgButton(CfgMuting,cbYM24131+i,Checked);
-        PostMessage(CfgMuting,WM_COMMAND,cbYM24131,0);
-        break;
-      };
-      case cbYM2413PercAll: {
-        int i;
-        const int Checked=IsDlgButtonChecked(CfgMuting,cbYM2413PercAll);
-        for (i=0;i<5;i++) CheckDlgButton(CfgMuting,cbYM241310+i,Checked);
-        PostMessage(CfgMuting,WM_COMMAND,cbYM24131,0);
-        break;
-      };
-      case cbPSGToneAll: {
-        int i;
-        const int Checked=IsDlgButtonChecked(CfgMuting,cbPSGToneAll);
-        for (i=0;i<3;i++) CheckDlgButton(CfgMuting,cbTone1+i,Checked);
-        PostMessage(CfgMuting,WM_COMMAND,cbTone1,0);
-        break;
-      };
+
+      // Tags tab -----------------------------------------------------------------
       case cbUseMB:
-        UseMB=IsDlgButtonChecked(CfgGD3,cbUseMB);
-        EnableWindow(GetDlgItem(CfgGD3,cbAutoMB     ),UseMB);
-        EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
+        UseMB=IsDlgButtonChecked(CfgTags,cbUseMB);
+        EnableWindow(GetDlgItem(CfgTags,cbAutoMB     ),UseMB);
+        EnableWindow(GetDlgItem(CfgTags,cbForceMBOpen),UseMB & AutoMB);
         break;
       case cbAutoMB:
-        AutoMB=IsDlgButtonChecked(CfgGD3,cbAutoMB);
-        EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
-      break;
-    case cbForceMBOpen:
-      ForceMBOpen=IsDlgButtonChecked(CfgGD3,cbForceMBOpen);
-      break;
-    case cbYM2612All:
-      YM2612Channels=!IsDlgButtonChecked(CfgMuting,cbYM2612All);
-      UpdateIfPlaying();
-      break;
-    case cbYM2151All:
-      YM2151Channels=!IsDlgButtonChecked(CfgMuting,cbYM2151All);
-      UpdateIfPlaying();
-      break;
-    case cbYM2413HiQ:
-      YM2413HiQ=IsDlgButtonChecked(CfgPlayback,cbYM2413HiQ);
-      if USINGCHIP(FM_YM2413) {
-        OPLL_set_quality(opll,YM2413HiQ);
+        AutoMB=IsDlgButtonChecked(CfgTags,cbAutoMB);
+        EnableWindow(GetDlgItem(CfgTags,cbForceMBOpen),UseMB & AutoMB);
+        break;
+      case cbForceMBOpen:
+        ForceMBOpen=IsDlgButtonChecked(CfgTags,cbForceMBOpen);
+        break;
+
+      // Others tab
+      case cbYM2612All:
+        YM2612Channels=!IsDlgButtonChecked(CfgOthers,cbYM2612All);
         UpdateIfPlaying();
+        break;
+      case cbYM2151All:
+        YM2151Channels=!IsDlgButtonChecked(CfgOthers,cbYM2151All);
+        UpdateIfPlaying();
+        break;
+
+      // Stuff not in tabs --------------------------------------------------------
+      case cbMuteImmediate:
+        ImmediateUpdate=IsDlgButtonChecked(DlgWin,cbMuteImmediate);
+        UpdateIfPlaying();
+        break;
+      case btnReadMe: {
+          char FileName[MAX_PATH];
+          char *PChar;
+          GetModuleFileName(PluginhInst,FileName,MAX_PATH);  // get *dll* path
+          GetFullPathName(FileName,MAX_PATH,FileName,&PChar);  // make it fully qualified plus find the filename bit
+          strcpy(PChar,"in_vgm.txt");
+          if ((int)ShellExecute(mod.hMainWindow,NULL,FileName,NULL,NULL,SW_SHOWNORMAL)<=32)
+            MessageBox(DlgWin,"Error opening in_vgm.txt from plugin folder",mod.description,MB_ICONERROR+MB_OK);
+        }
+        break;
       }
-      break;
-    case cbOverDrive:
-      Overdrive=IsDlgButtonChecked(CfgPlayback,cbOverDrive);
-      UpdateIfPlaying();
-      break;
-    case cbBoostPSGNoise:
-      SN76489_BoostNoise=IsDlgButtonChecked(CfgPlayback,cbBoostPSGNoise);
-      UpdateIfPlaying();
-      break;
-    case cbSmoothPSGVolume:
-      SN76489_VolumeArray=IsDlgButtonChecked(CfgPlayback,cbSmoothPSGVolume);
-      UpdateIfPlaying();
-      break;
-    case cbMuteImmediate:
-      UpdateIfPlaying();
-      break;
-    case btnReadMe: {
-        char FileName[MAX_PATH];
-        char *PChar;
-        GetModuleFileName(PluginhInst,FileName,MAX_PATH);  // get *dll* path
-        GetFullPathName(FileName,MAX_PATH,FileName,&PChar);  // make it fully qualified plus find the filename bit
-        strcpy(PChar,"in_vgm.txt");
-        if ((int)ShellExecute(mod.hMainWindow,NULL,FileName,NULL,NULL,SW_SHOWNORMAL)<=32)
-          MessageBox(DlgWin,"Error opening in_vgm.txt from plugin folder",mod.description,MB_ICONERROR+MB_OK);
-      }
-      break;
-    };
     break; // end WM_COMMAND handling
+
+    case WM_HSCROLL: // trackbar notifications
+    {
+      int i;
+      // Get PSG panning controls
+      SN76489_Pan[0]=SendDlgItemMessage(CfgPSG,slSNCh0,TBM_GETPOS,0,0);
+      SN76489_Pan[1]=SendDlgItemMessage(CfgPSG,slSNCh1,TBM_GETPOS,0,0);
+      SN76489_Pan[2]=SendDlgItemMessage(CfgPSG,slSNCh2,TBM_GETPOS,0,0);
+      SN76489_Pan[3]=SendDlgItemMessage(CfgPSG,slSNCh3,TBM_GETPOS,0,0);
+      if (PSGClock)
+        SN76489_SetPanning(0,SN76489_Pan[0],SN76489_Pan[1],SN76489_Pan[2],SN76489_Pan[3]);
+
+      // Get YM2413 panning controls
+      YM2413_Pan[ 0]=SendDlgItemMessage(Cfg2413,sl2413ch1,TBM_GETPOS,0,0);
+      YM2413_Pan[ 1]=SendDlgItemMessage(Cfg2413,sl2413ch2,TBM_GETPOS,0,0);
+      YM2413_Pan[ 2]=SendDlgItemMessage(Cfg2413,sl2413ch3,TBM_GETPOS,0,0);
+      YM2413_Pan[ 3]=SendDlgItemMessage(Cfg2413,sl2413ch4,TBM_GETPOS,0,0);
+      YM2413_Pan[ 4]=SendDlgItemMessage(Cfg2413,sl2413ch5,TBM_GETPOS,0,0);
+      YM2413_Pan[ 5]=SendDlgItemMessage(Cfg2413,sl2413ch6,TBM_GETPOS,0,0);
+      YM2413_Pan[ 6]=SendDlgItemMessage(Cfg2413,sl2413ch7,TBM_GETPOS,0,0);
+      YM2413_Pan[ 7]=SendDlgItemMessage(Cfg2413,sl2413ch8,TBM_GETPOS,0,0);
+      YM2413_Pan[ 8]=SendDlgItemMessage(Cfg2413,sl2413ch9,TBM_GETPOS,0,0);
+      YM2413_Pan[ 9]=SendDlgItemMessage(Cfg2413,sl2413hh ,TBM_GETPOS,0,0);
+      YM2413_Pan[10]=SendDlgItemMessage(Cfg2413,sl2413cym,TBM_GETPOS,0,0);
+      YM2413_Pan[11]=SendDlgItemMessage(Cfg2413,sl2413tt ,TBM_GETPOS,0,0);
+      YM2413_Pan[12]=SendDlgItemMessage(Cfg2413,sl2413sd ,TBM_GETPOS,0,0);
+      YM2413_Pan[13]=SendDlgItemMessage(Cfg2413,sl2413bd ,TBM_GETPOS,0,0);
+      if (USINGCHIP(FM_YM2413))
+        for ( i=0; i< YM2413_NUM_CHANNELS; ++i )
+          OPLL_set_pan( opll, i, YM2413_Pan[i] );
+
+      if((LOWORD(wParam)==TB_THUMBPOSITION)||(LOWORD(wParam)==TB_ENDTRACK)) UpdateIfPlaying();
+      break;
+    }
     case WM_NOTIFY:
       switch (LOWORD(wParam)) {
         case tcMain:
@@ -671,12 +965,12 @@ void about(HWND hwndParent)
     "http://www.smspower.org/music\n\n"
     "Current status:\n"
     "PSG - emulated as a perfect device, leading to slight differences in sound compared to the real thing. Noise pattern is 100% accurate, unlike almost every other core out there :P\n"
-    "YM2413 - via EMU2413 0.60 (Mitsutaka Okazaki) (http://www.angel.ne.jp/~okazaki/ym2413).\n"
+    "YM2413 - via EMU2413 0.61 (Mitsutaka Okazaki) (http://www.angel.ne.jp/~okazaki/ym2413).\n"
     "YM2612 - via Gens 2.10 core (Stephane Dallongeville) (http://gens.consolemul.com).\n"
     "YM2151 - via MAME FM core (Jarek Burczynski, Hiro-shi), thanks to BlackAura.\n\n"
     "Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial project and as such it is permanently in beta.\n\n"
     "Thanks also go to:\n"
-    "Bock, Heliophobe, Mike G, Steve Snake, Dave, Charles MacDonald, Ville Helin, John Kortink, fx^\n\n"
+    "Bock, Heliophobe, Mike G, Steve Snake, Dave, Charles MacDonald, Ville Helin, John Kortink, fx^, DukeNukem\n\n"
     "  ...and Zhao Yuehua xxx wo ai ni"
     ,mod.description,MB_ICONINFORMATION|MB_OK);
 }
@@ -687,12 +981,14 @@ void about(HWND hwndParent)
 void init() {
   char INIFileName[MAX_PATH];
   char *PChar;
+  char buffer[1024];
+  int i;
 
   GetModuleFileName(mod.hDllInstance,INIFileName,MAX_PATH);  // get exe path
-    GetFullPathName(INIFileName,MAX_PATH,INIFileName,&PChar);  // make it fully qualified plus find the filename bit
+  GetFullPathName(INIFileName,MAX_PATH,INIFileName,&PChar);  // make it fully qualified plus find the filename bit
   strcpy(PChar,"plugin.ini");  // Change to plugin.ini
 
-    GetTempPath(MAX_PATH,TextFileName);
+  GetTempPath(MAX_PATH,TextFileName);
   strcat(TextFileName,"GD3.html");
   GetShortPathName(TextFileName,TextFileName,MAX_PATH);
 
@@ -707,7 +1003,6 @@ void init() {
   YM2413HiQ           =GetPrivateProfileInt(INISECTION,"High quality YM2413"  ,0    ,INIFileName);
   Overdrive           =GetPrivateProfileInt(INISECTION,"Overdrive"            ,1    ,INIFileName);
   ImmediateUpdate     =GetPrivateProfileInt(INISECTION,"Immediate update"     ,1    ,INIFileName);
-  SN76489_BoostNoise  =GetPrivateProfileInt(INISECTION,"Boost PSG noise"      ,0    ,INIFileName);
   SN76489_VolumeArray =GetPrivateProfileInt(INISECTION,"PSG volume curve"     ,0    ,INIFileName);
   MLJapanese          =GetPrivateProfileInt(INISECTION,"ML Japanese"          ,0    ,INIFileName);
   MLShowFM            =GetPrivateProfileInt(INISECTION,"ML show FM"           ,1    ,INIFileName);
@@ -715,7 +1010,14 @@ void init() {
 
   GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
 
-  SN76489_Mute=0xf;
+  GetPrivateProfileString(INISECTION,"SN76489 panning","127,127,127,127",buffer,1023,INIFileName);
+  if ( sscanf( buffer, "%d,%d,%d,%d", &SN76489_Pan[0], &SN76489_Pan[1], &SN76489_Pan[2], &SN76489_Pan[3] ) != 4 )
+    for ( i = 0; i < SN76489_NUM_CHANNELS; ++i ) SN76489_Pan[i] = 127;
+  GetPrivateProfileString(INISECTION,"YM2413 panning","127,127,127,127,127,127,127,127,127,127,127,127,127,127",buffer,1023,INIFileName);
+  if ( sscanf( buffer, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", &YM2413_Pan[0], &YM2413_Pan[1], &YM2413_Pan[2], &YM2413_Pan[3], &YM2413_Pan[4], &YM2413_Pan[5], &YM2413_Pan[6], &YM2413_Pan[7], &YM2413_Pan[8], &YM2413_Pan[9], &YM2413_Pan[10], &YM2413_Pan[11], &YM2413_Pan[12], &YM2413_Pan[13] ) != YM2413_NUM_CHANNELS )
+    for ( i = 0; i < YM2413_NUM_CHANNELS; ++i ) YM2413_Pan[i] = 127;
+  RandomisePanning    =GetPrivateProfileInt(INISECTION,"Randomise panning"     ,1    ,INIFileName);
+
 };
 
 //-----------------------------------------------------------------
@@ -724,7 +1026,7 @@ void init() {
 void quit() {
   char INIFileName[MAX_PATH];
   char *PChar;  // pointer to INI string
-  char tempstr[18];  // buffer for itoa
+  char tempstr[1024];  // buffer for itoa
 
   GetModuleFileName(mod.hDllInstance,INIFileName,MAX_PATH);  // get exe path
   GetFullPathName(INIFileName,MAX_PATH,INIFileName,&PChar);  // make it fully qualified plus find the filename bit
@@ -742,11 +1044,15 @@ void quit() {
   WritePrivateProfileString(INISECTION,"High quality YM2413" ,itoa(YM2413HiQ            ,tempstr,10),INIFileName);
   WritePrivateProfileString(INISECTION,"Overdrive"           ,itoa(Overdrive            ,tempstr,10),INIFileName);
   WritePrivateProfileString(INISECTION,"Immediate update"    ,itoa(ImmediateUpdate      ,tempstr,10),INIFileName);
-  WritePrivateProfileString(INISECTION,"Boost PSG noise"     ,itoa(SN76489_BoostNoise   ,tempstr,10),INIFileName);
   WritePrivateProfileString(INISECTION,"PSG volume curve"    ,itoa(SN76489_VolumeArray  ,tempstr,10),INIFileName);
   WritePrivateProfileString(INISECTION,"ML Japanese"         ,itoa(MLJapanese           ,tempstr,10),INIFileName);
   WritePrivateProfileString(INISECTION,"ML show FM"          ,itoa(MLShowFM             ,tempstr,10),INIFileName);
   WritePrivateProfileString(INISECTION,"ML type"             ,itoa(MLType               ,tempstr,10),INIFileName);
+  sprintf(tempstr, "%d,%d,%d,%d", SN76489_Pan[0], SN76489_Pan[1], SN76489_Pan[2], SN76489_Pan[3]);
+  WritePrivateProfileString(INISECTION,"SN76489 panning"     ,tempstr,INIFileName);
+  sprintf(tempstr, "%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", YM2413_Pan[0], YM2413_Pan[1], YM2413_Pan[2], YM2413_Pan[3], YM2413_Pan[4], YM2413_Pan[5], YM2413_Pan[6], YM2413_Pan[7], YM2413_Pan[8], YM2413_Pan[9], YM2413_Pan[10], YM2413_Pan[11], YM2413_Pan[12], YM2413_Pan[13]);
+  WritePrivateProfileString(INISECTION,"YM2413 panning"      ,tempstr,INIFileName);
+  WritePrivateProfileString(INISECTION,"Randomise panning"   ,itoa(RandomisePanning     ,tempstr,10),INIFileName);
 
   DeleteFile(TextFileName);
 };
@@ -768,7 +1074,7 @@ int isourfile(char *fn) {
   // I must be getting good at this, that line is quite
   // impressively obfuscated
 };
-
+/*
 //-----------------------------------------------------------------
 // File download callback function
 //-----------------------------------------------------------------
@@ -785,12 +1091,44 @@ BOOL CALLBACK DownloadDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
     };
     return (FALSE);    // return FALSE to signify message not processed
 };
+*/
+char *URLEncode(char *s) {
+  // URL encode string s
+  // caller must free returned string
+  char *hexchars="0123456789ABCDEF";
+  char *result=malloc(strlen(s)*3+1),*p,*q;
+  
+  strcpy(result,s); // fill it up to start with
+
+  q=strstr(s,"://");
+
+  if(!q) {
+    *result=0;
+    return result;
+  }
+
+  if(strchr(CurrentURL,'%')) return result; // do nothing if there's a % in it already since it's probably already URL encoded
+
+  p=result+(q-s+2);
+
+  for (q+=2;*q!=0;q++)
+		if ((*q<'/' && *q!='-' && *q!='.') ||
+		  (*q<'A' && *q>'9') ||
+			(*q>'Z' && *q<'a' && *q!='_') ||
+			(*q>'z')) {
+        *p++='%';
+        *p++=hexchars[*q>>4];
+        *p++=hexchars[*q&0xf];
+    } else *p++=*q;
+  *p=0;
+
+  return result;
+}
 
 //-----------------------------------------------------------------
 // Play filename
 //-----------------------------------------------------------------
-int play(char *fn) 
-{ 
+int play(char *fn) { 
   int maxlatency;
   int thread_id;
   HANDLE f;
@@ -802,51 +1140,49 @@ int play(char *fn)
   strcpy(CurrentURLFilename,"");
 
   if (IsURL(fn)) {  // It's a URL!
-    HRESULT hr;
-    HWND DlgWnd;
+    int (*httpRetrieveFile)(HWND hwnd, char *url, char *file, char *dlgtitle);
+    int error;
+    char *EncodedURL;
 
     strcpy(CurrentURL,fn);
 
-    // Try to download file
+    error=SendMessage(mod.hMainWindow,WM_USER,(WPARAM)NULL,240);  // get HTTP getter function
 
-    DlgWnd=CreateDialog(mod.hDllInstance,"DOWNLOADDIALOGUE",mod.hMainWindow,DownloadDialogProc); // Open dialog
-    hr=URLDownloadToCacheFile(
-      NULL,        // Must be NULL for non-ActiveX
-      CurrentURL,      // URL to get
-      CurrentURLFilename,  // Buffer to get location string
-      MAX_PATH,      // Buffer size
-      0,          // Reserved, must be 0
-      NULL);        // Callback function
-    // URLMon.h says:
-    //    Flags for the UrlDownloadToCacheFile                                                                    
-    //    ...
-    //    #define URLOSTRM_USECACHEDCOPY                  0x2      // Get from cache if available else download      
-    // but where do I put it? If I put it in the reserved DWORD nothing happens :/
-    // This is a problem because:
-    // - the connect dialogue has Cancel, not Work Offline
-    // - every time you close the MB it switches off Offline mode
-    // Bah >:(
+    if (error>1) {
+      httpRetrieveFile=(void *)error;
+      EncodedURL=URLEncode(CurrentURL);
+      GetTempPath(MAX_PATH,CurrentURLFilename);
+      strcat(CurrentURLFilename,"temp.vgm");
+      error=httpRetrieveFile(mod.hMainWindow,EncodedURL,CurrentURLFilename,mod.description);
+      free(EncodedURL);
+    } else
+      error=1;
 
-    SendMessage(DlgWnd,WM_CLOSE,0,0);
-    SendMessage(mod.hMainWindow,WM_PAINT,0,0);
-    DestroyWindow(DlgWnd);
 
-    if (hr==S_OK) {
+    if(!error) {
       strcpy(fn,CurrentURLFilename);
     } else {
-      // MessageBox(mod.hMainWindow,"Error downloading file","Error",0);
       return -1;  // File not found
     };
 
   };
 
   if ((!MutePersistent) && (*lastfn) && (strcmp(fn,lastfn)!=0)) {
-    // If file has changed, reset channel muting
+    // If file has changed, reset channel muting (if not blocked)
     SN76489_Mute  =SN76489_MUTE_ALLON;
-    YM2413Channels=YM2413MUTE_ALLON;
-    YM2612Channels=YM2612MUTE_ALLON;
-    YM2151Channels=YM2151MUTE_ALLON;
+    YM2413Channels=YM2413_MUTE_ALLON;
+    YM2612Channels=YM2612_MUTE_ALLON;
+    YM2151Channels=YM2151_MUTE_ALLON;
   };
+
+  // If wanted, randomise panning
+  if ( RandomisePanning )
+  {
+    for ( i = 0; i < SN76489_NUM_CHANNELS; ++i )
+      SN76489_Pan[i] = random_stereo();
+    for ( i = 0; i < YM2413_NUM_CHANNELS; ++i )
+      YM2413_Pan[i] = random_stereo();
+  }
 
   strcpy(lastfn,fn);
   
@@ -875,12 +1211,9 @@ int play(char *fn)
   };
 
   // Check for VGM marker
-  if (strncmp(VGMHeader.VGMIdent,"Vgm ",4)!=0) {
+  if (VGMHeader.VGMIdent != VGMIDENT) {
     char msgstring[1024];
-    char foundstr[5];
-    strncpy(foundstr,VGMHeader.VGMIdent,4);
-    foundstr[4]='\0';
-    sprintf(msgstring,"VGM marker not found in \"%s\"\nFound this instead: \"%s\"",fn,foundstr);
+    sprintf(msgstring,"VGM marker not found in \"%s\"",fn);
     MessageBox(mod.hMainWindow,msgstring,mod.description,0);
     gzclose(InputFile);
     InputFile=NULL;
@@ -900,8 +1233,13 @@ int play(char *fn)
   };
 
   // Fix stuff for older version files:
-  // Add default white noise feedback for <1.02
-  if (VGMHeader.Version<0x0102) VGMHeader.PSGWhiteNoiseFeedback=0x0009;
+  // Nothing to fix for 1.01
+  if ( VGMHeader.Version < 0x0110 ) {
+    VGMHeader.PSGWhiteNoiseFeedback = 0x0009;
+    VGMHeader.PSGShiftRegisterWidth = 16;
+    VGMHeader.YM2612Clock = VGMHeader.YM2413Clock;
+    VGMHeader.YM2151Clock = VGMHeader.YM2413Clock;
+  }
 
   // Get length
   if (VGMHeader.TotalLength==0) {
@@ -911,7 +1249,7 @@ int play(char *fn)
   };
 
   // Get loop data
-  if (VGMHeader.LoopOffset==0) {
+  if (VGMHeader.LoopLength==0) {
     LoopLengthInms=0;
     LoopOffset=0;
   } else {
@@ -921,7 +1259,9 @@ int play(char *fn)
 
   // Get clock values
   PSGClock=VGMHeader.PSGClock;
-  FMClock=VGMHeader.FMClock;
+  YM2413Clock=VGMHeader.YM2413Clock;
+  YM2612Clock=VGMHeader.YM2612Clock;
+  YM2151Clock=VGMHeader.YM2151Clock;
 
   // BlackAura - Disable all FM chips
   FMChips=0;
@@ -949,7 +1289,10 @@ int play(char *fn)
   };
 
   // Open page in MB if wanted
-  if (UseMB & AutoMB) InfoInBrowser(fn,ForceMBOpen);
+  if (UseMB & AutoMB) {
+    InfoInBrowser(fn,ForceMBOpen);
+    SendMessage(mod.hMainWindow,WM_USER,1,248); // block any more things opening in there
+  }
 
   // initialize vis stuff
   mod.SAVSAInit(maxlatency,SAMPLERATE);
@@ -957,12 +1300,16 @@ int play(char *fn)
 
   mod.outMod->SetVolume(-666); // set the output plug-ins default volume
 
-    gzseek(InputFile,0x40,SEEK_SET);
+  gzseek(InputFile,0x40,SEEK_SET);
 
   // FM Chip startups are done whenever a chip is used for the first time
 
   // Start up SN76489 (if used)
-  if (PSGClock) SN76489_Init(PSGClock,SAMPLERATE,VGMHeader.PSGWhiteNoiseFeedback);
+  if (PSGClock) {
+    SN76489_Init(0,PSGClock,SAMPLERATE);
+    SN76489_Config(0,SN76489_Mute,SN76489_VolumeArray,VGMHeader.PSGWhiteNoiseFeedback, VGMHeader.PSGShiftRegisterWidth);
+    SN76489_SetPanning(0,SN76489_Pan[0],SN76489_Pan[1],SN76489_Pan[2],SN76489_Pan[3]);
+  }
 
   // Reset some stuff
   paused=0;
@@ -1044,6 +1391,8 @@ void stop() {
 
   // Stop SN76489
   // not needed
+
+  SendMessage(mod.hMainWindow,WM_USER,0,248); // let Now Playing work as normal
 };
 
 //-----------------------------------------------------------------
@@ -1077,9 +1426,12 @@ void setoutputtime(int time_in_ms) {
   mod.outMod->Pause(1);
 
   if USINGCHIP(FM_YM2413) {  // If using YM2413, reset it
+    int i;
     YM2413Channels=OPLL_toggleMask(opll,0);
     OPLL_reset(opll);
     OPLL_setMask(opll,YM2413Channels);
+    for ( i = 0; i < YM2413_NUM_CHANNELS; ++i )
+      OPLL_set_pan( opll, i, YM2413_Pan[i] );
   };
 
   if USINGCHIP(FM_YM2612) {
@@ -1208,7 +1560,7 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
         sprintf(msgstring,"File too short:\n%s",FilenameForInfoDlg);
         MessageBox(mod.hMainWindow,msgstring,mod.description,0);
         return (TRUE);
-      } else if (strncmp(VGMHeader.VGMIdent,"Vgm ",4)!=0) {
+      } else if (VGMHeader.VGMIdent != VGMIDENT) {
         // VGM marker incorrect
         char msgstring[1024];
         sprintf(msgstring,"VGM marker not found in:\n%s",FilenameForInfoDlg);
@@ -1222,11 +1574,14 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
         return (TRUE);
       } else {  // VGM header exists
         char tempstr[256];
+        char tempstr2[256];
         sprintf(tempstr,"%x.%02x",VGMHeader.Version>>8,VGMHeader.Version&0xff);
         SetDlgItemText(DlgWin,ebVersion,tempstr);
 
-        SendDlgItemMessage(DlgWin,rbPSG,BM_SETCHECK,(VGMHeader.PSGClock!=0),0);
-        SendDlgItemMessage(DlgWin,rbFM,BM_SETCHECK,(VGMHeader.FMClock!=0),0);
+        SendDlgItemMessage(DlgWin,rbSN76489,BM_SETCHECK,(VGMHeader.PSGClock!=0),0);
+        SendDlgItemMessage(DlgWin,rbYM2413,BM_SETCHECK,(VGMHeader.YM2413Clock!=0),0);
+        SendDlgItemMessage(DlgWin,rbYM2612,BM_SETCHECK,(VGMHeader.YM2612Clock!=0),0);
+        SendDlgItemMessage(DlgWin,rbYM2151,BM_SETCHECK,(VGMHeader.YM2151Clock!=0),0);
 
         sprintf(
           tempstr,
@@ -1236,12 +1591,10 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
         );
         SetDlgItemText(DlgWin,ebSize,tempstr);
 
-        sprintf(
-          tempstr,
-          "%.1fs total (inc. %.1fs loop)",
-          VGMHeader.TotalLength/44100.0,
-          VGMHeader.LoopLength/44100.0
-        );
+        sprintf(tempstr,"%s total (inc. ",printtime(tempstr2,VGMHeader.TotalLength/44100.0));
+        printtime(tempstr2,VGMHeader.LoopLength/44100.0);
+        strcat(tempstr,tempstr2);
+        strcat(tempstr," loop)");
         SetDlgItemText(DlgWin,ebLength,tempstr);
 
         if (VGMHeader.GD3Offset>0) {
@@ -1249,7 +1602,7 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
           gzseek(fh,VGMHeader.GD3Offset+0x14,SEEK_SET);
           i=gzread(fh,&GD3Header,sizeof(GD3Header));
           if ((i==sizeof(GD3Header)) &&
-            (strncmp(GD3Header.IDString,"Gd3 ",4)==0) &&
+            (GD3Header.GD3Ident == GD3IDENT) &&
             (GD3Header.Version>=MINGD3VERSION) &&
             ((GD3Header.Version & REQUIREDGD3MAJORVER)==REQUIREDGD3MAJORVER)) {
               // GD3 is acceptable version
@@ -1359,8 +1712,7 @@ int infoDlg(char *fn, HWND hwnd)
 //-----------------------------------------------------------------
 // Get file info for playlist/title display
 //-----------------------------------------------------------------
-void getfileinfo(char *filename, char *title, int *length_in_ms)
-{
+void getfileinfo(char *filename, char *title, int *length_in_ms) {
   long int  TrackLength;
   char    TrackTitle[1024],
         FileToUse[MAX_PATH],
@@ -1400,7 +1752,7 @@ void getfileinfo(char *filename, char *title, int *length_in_ms)
 
     if (i<sizeof(VGMHeader)) {
       sprintf(TrackTitle,"File too short: %s",JustFileName);
-    } else if (strncmp(VGMHeader.VGMIdent,"Vgm ",4)!=0) {
+    } else if (VGMHeader.VGMIdent != VGMIDENT) {
       // VGM marker incorrect
       sprintf(TrackTitle,"VGM marker not found in %s",JustFileName);
     } else if ((VGMHeader.Version<MINVERSION) || ((VGMHeader.Version & REQUIREDMAJORVER)!=REQUIREDMAJORVER)) {
@@ -1411,7 +1763,7 @@ void getfileinfo(char *filename, char *title, int *length_in_ms)
       TrackLength=(long int) (
         (VGMHeader.TotalLength+NumLoops*VGMHeader.LoopLength)
         /44.1
-        *((PlaybackRate&&FileRate)?(double)VGMHeader.RecordingRate/PlaybackRate:1)
+        *((PlaybackRate&&VGMHeader.RecordingRate)?(double)VGMHeader.RecordingRate/PlaybackRate:1)
 //        +PauseBetweenTracksms+(VGMHeader.LoopOffset?LoopingFadeOutms:0)
       );
 
@@ -1420,7 +1772,7 @@ void getfileinfo(char *filename, char *title, int *length_in_ms)
         gzseek(fh,VGMHeader.GD3Offset+0x14,SEEK_SET);
         i=gzread(fh,&GD3Header,sizeof(GD3Header));
         if ((i==sizeof(GD3Header)) &&
-          (strncmp(GD3Header.IDString,"Gd3 ",4)==0) &&
+          (GD3Header.GD3Ident == GD3IDENT) &&
           (GD3Header.Version>=MINGD3VERSION) &&
           ((GD3Header.Version & REQUIREDGD3MAJORVER)==REQUIREDGD3MAJORVER)) {
             // GD3 is acceptable version
@@ -1497,6 +1849,13 @@ void getfileinfo(char *filename, char *title, int *length_in_ms)
   if (length_in_ms) *length_in_ms=TrackLength;
 };
 
+void debuglog(int number) {
+  FILE *f;
+  f=fopen("c:\\in_vgm log.txt","a");
+  fprintf(f,"%d\n",number);
+  fclose(f);
+}
+
 //-----------------------------------------------------------------
 // Input-side EQ - not used
 //-----------------------------------------------------------------
@@ -1506,8 +1865,7 @@ void eq_set(int on, char data[10], int preamp) {};
 // Decode thread
 //-----------------------------------------------------------------
 #define ReadByte() gzgetc(InputFile)
-DWORD WINAPI __stdcall DecodeThread(void *b)
-{
+DWORD WINAPI __stdcall DecodeThread(void *b) {
   int SamplesTillNextRead=0;
   float WaitFactor,FractionalSamplesTillNextRead=0;
 
@@ -1539,22 +1897,25 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
           switch (b1=ReadByte()) {
           case 0x4f:  // GG stereo
             b1=ReadByte();
-            if (PSGClock) SN76489_GGStereoWrite((char)b1);
+            if (PSGClock) SN76489_GGStereoWrite(0,(char)b1);
             break;
           case 0x50:  // SN76489 write
             b1=ReadByte();
-            if (PSGClock) SN76489_Write((char)b1);
+            if (PSGClock) SN76489_Write(0,(char)b1);
             break;
           case 0x51:  // YM2413 write
             b1=ReadByte();
             b2=ReadByte();
-            if (FMClock) {
+            if (YM2413Clock) {
               if (!USINGCHIP(FM_YM2413)) {  // BlackAura - If YM2413 emu not started, start it
+                int i;
                 // Start the emulator up
-                opll=OPLL_new(FMClock,SAMPLERATE);
+                opll=OPLL_new(YM2413Clock,SAMPLERATE);
                 OPLL_reset(opll);
                 OPLL_reset_patch(opll,0);
                 OPLL_setMask(opll,YM2413Channels);
+                for ( i = 0; i< YM2413_NUM_CHANNELS; ++i )
+                  OPLL_set_pan( opll, i, YM2413_Pan[i] );
                 OPLL_set_quality(opll,YM2413HiQ);
                 // Set the flag for it
                 FMChips|=FM_YM2413;
@@ -1565,12 +1926,12 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
           case 0x52:  // YM2612 write (port 0)
             b1=ReadByte();
             b2=ReadByte();
-            if (FMClock) {
+            if (YM2612Clock) {
               if (!USINGCHIP(FM_YM2612)) {
 #ifdef YM2612GENS
-                YM2612_Init(FMClock,SAMPLERATE,0);
+                YM2612_Init(YM2612Clock,SAMPLERATE,0);
 #else
-                YM2612Init(1,FMClock,SAMPLERATE,NULL,NULL);
+                YM2612Init(1,YM2612Clock,SAMPLERATE,NULL,NULL);
 #endif
                 FMChips|=FM_YM2612;
               };
@@ -1586,12 +1947,12 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
           case 0x53:  // YM2612 write (port 1)
             b1=ReadByte();
             b2=ReadByte();
-            if (FMClock) {
+            if (YM2612Clock) {
               if (!USINGCHIP(FM_YM2612)) {
 #ifdef YM2612GENS
-                YM2612_Init(FMClock,SAMPLERATE,0);
+                YM2612_Init(YM2612Clock,SAMPLERATE,0);
 #else
-                YM2612Init(1,FMClock,SAMPLERATE,NULL,NULL);
+                YM2612Init(1,YM2612Clock,SAMPLERATE,NULL,NULL);
 #endif
                 FMChips|=FM_YM2612;
               };
@@ -1607,9 +1968,9 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
           case 0x54:  // BlackAura - YM2151 write
             b1=ReadByte();
             b2=ReadByte();
-            if (FMClock) {
+            if (YM2151Clock) {
               if (!USINGCHIP(FM_YM2151)) {
-                YM2151Init(1,FMClock,SAMPLERATE);
+                YM2151Init(1,YM2151Clock,SAMPLERATE);
                 FMChips|=FM_YM2151;
               };
               YM2151WriteReg(0,b1,b2);
@@ -1640,9 +2001,9 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
           case 0x63:  // Wait 1/50 s
             SamplesTillNextRead=882;
             break;
-          case 0x64:  // Wait n samples (1 byte)
-            SamplesTillNextRead=ReadByte();
-            break;
+//        case 0x64:  // Wait n samples (1 byte)
+//          SamplesTillNextRead=ReadByte();
+//          break;
           case 0x70:
           case 0x71:
           case 0x72:
@@ -1692,6 +2053,9 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
             break;
           };  // end case
 
+          // debug
+//          if(SamplesTillNextRead)debuglog(SamplesTillNextRead);
+
           FractionalSamplesTillNextRead+=SamplesTillNextRead*WaitFactor;
           SamplesTillNextRead=(int)FractionalSamplesTillNextRead;
           FractionalSamplesTillNextRead-=SamplesTillNextRead;
@@ -1717,24 +2081,27 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
           // PSG
           if (PSGClock) {
             NumChipsUsed++;
-            SN76489_GetValues(&l,&r);
+            SN76489_UpdateOne(0,&l,&r);
           };
 
-          if (FMClock) {
+          if (YM2413Clock) {
             // YM2413
             if USINGCHIP(FM_YM2413) {
-              int FMVal=OPLL_calc(opll)/YM2413RelativeVol;
+              int channels[2];
               NumChipsUsed++;
-              l+=FMVal;
-              r+=FMVal;
+              OPLL_calc_stereo(opll,channels);
+              l += channels[0] / YM2413RelativeVol;
+              r += channels[1] / YM2413RelativeVol;
             };
+          }
 
+          if (YM2612Clock) {
             // YM2612
             if USINGCHIP(FM_YM2612) {
 #ifdef YM2612GENS
               int *Buffer[2];
-              int Left,Right;
-#else            
+              int Left=0,Right=0;
+#else
               signed short *Buffer[2];
               signed short Left,Right;
 #endif
@@ -1742,12 +2109,12 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
               Buffer[0]=&Left;
               Buffer[1]=&Right;
               if (YM2612Channels==0) {
-#ifdef YM2612GENS        
+#ifdef YM2612GENS
                 YM2612_Update(Buffer,1);
                 YM2612_DacAndTimers_Update(Buffer,1);
                 Left /=GENSYM2612RelativeVol;
                 Right/=GENSYM2612RelativeVol;
-#else              
+#else
                 YM2612UpdateOne(0,Buffer,1);
                 Left /=MAMEYM2612RelativeVol;
                 Right/=MAMEYM2612RelativeVol;
@@ -1758,7 +2125,9 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
               l+=Left;
               r+=Right;
             };
+          }
 
+          if (YM2151Clock) {
             // YM2151
             if USINGCHIP(FM_YM2151) {
               signed short *mameBuffer[2];
@@ -1917,6 +2286,69 @@ wchar *getGD3(int index,wchar *block,int blocklen) {
   return p;
 }
 
+int getTrackNumber(char *filename) {
+  // attempts to guess the track number for the given file
+  // by looking in the corresponding m3u
+  // assumes a filename "Streets of Rage II - Never Return Alive.vgz"
+  // will have a playlist "Streets of Rage II.m3u"
+  // returns track number
+  // or 0 for not found
+  FILE *f;
+  char *playlist;
+  char *p;
+  char *fn;
+  char buff[1024]; // buffer for reading lines from file
+//  char c; // for remembering the char I clobber from the playlist string when overwriting with ".m3u\0"
+  int number=0;
+  int linenumber;
+
+  playlist=malloc(strlen(filename)+16); // plenty of space in all weird cases
+
+  if(playlist) {
+//    strcpy(playlist,filename); // filename in playlist name buffer
+    p=strrchr(filename,'\\'); // p points to the last \ in the filename
+    if(p){
+      // isolate filename
+      fn=malloc(strlen(p));
+      if(fn) {
+        strcpy(fn,p+1);
+
+        while(number==0) {
+          p=strstr(p," - "); // find first " - " after current position of p
+          if(p) {
+//            c=*(p+3);
+            strncpy(playlist,filename,p-filename); // copy filename up until the " - "
+            strcpy(playlist+(p-filename),".m3u"); // terminate it with a ".m3u\0"
+//            strncpy(p,".m3u",4); // now it's a playlist filename
+
+            f=fopen(playlist,"r"); // try to open file
+            if(f) {
+              linenumber=1;
+              // read through file, a line at a time
+              while(fgets(buff,1024,f) && (number==0)) {    // fgets will read in all characters up to and including the line break
+                if(strnicmp(buff,fn,strlen(fn))==0) {
+                  // found it!
+                  number=linenumber;
+                }
+                if((strlen(buff)>3)&&(buff[0]!='#')) linenumber++; // count lines that are (probably) valid but not #EXTINF lines
+              }
+
+              fclose(f);
+            }
+//            strncpy(p," - ",3); // restore name for next search
+//            p+=3;
+//            *p=c; // restore clobbered char and make it not match this " - " next iteration
+            p++; // make it not find this " - " next iteration
+          } else break;
+        }
+        free(fn);
+      }
+    }
+    free(playlist);
+  }
+  return number;
+}
+
 __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadata,char *ret,int retlen) {
   int tagindex=-2;
 
@@ -1927,14 +2359,16 @@ __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadat
 
   *ret='\0';
   
-  if(strcmp(metadata,"artist")==0)        tagindex=6;   // author
-  else if(strcmp(metadata,"length")==0)   tagindex=-1;  // length /ms
-  else if(strcmp(metadata,"title")==0)    tagindex=0;   // track title
-  else if(strcmp(metadata,"album")==0)    tagindex=2;   // game name
-  else if(strcmp(metadata,"comment")==0)  tagindex=10;  // comment
-  else if(strcmp(metadata,"year")==0)     tagindex=8;   // year
-  else if(strcmp(metadata,"genre")==0)    tagindex=4;   // system
-  else if(strcmp(metadata,"track")==0)    tagindex=11;  // track number
+  if(stricmp(metadata,"artist")==0)        tagindex=6;   // author
+  else if(stricmp(metadata,"length")==0)   tagindex=-1;  // length /ms
+  else if(stricmp(metadata,"title")==0)    tagindex=0;   // track title
+  else if(stricmp(metadata,"album")==0)    tagindex=2;   // game name
+  else if(stricmp(metadata,"comment")==0)  tagindex=10;  // comment
+  else if(stricmp(metadata,"year")==0)     tagindex=8;   // year
+  else if(stricmp(metadata,"genre")==0)    tagindex=4;   // system
+  else if(stricmp(metadata,"track")==0)    tagindex=11;  // track number
+
+//  if(tagindex==-2)MessageBox(0,metadata,"Unknown",0); // debug: get metadata types
     
   if((MLJapanese)&&(tagindex>=0)&&(tagindex<=6)) tagindex++; // Increment index for Japanese
 
@@ -1950,7 +2384,7 @@ __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadat
     i=gzread(fh,&VGMHeader,sizeof(VGMHeader));
 
     if (  (i<sizeof(VGMHeader))
-       || (strncmp(VGMHeader.VGMIdent,"Vgm ",4)!=0)
+       || (VGMHeader.VGMIdent != VGMIDENT)
        || ((VGMHeader.Version<MINVERSION) || ((VGMHeader.Version & REQUIREDMAJORVER)!=REQUIREDMAJORVER))
     ) return 0;
     else {
@@ -1960,7 +2394,7 @@ __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadat
         long int l=(long int)(
           (VGMHeader.TotalLength+NumLoops*VGMHeader.LoopLength)
           /44.1
-          *((PlaybackRate&&FileRate)?(double)VGMHeader.RecordingRate/PlaybackRate:1)
+          *((PlaybackRate&&VGMHeader.RecordingRate)?(double)VGMHeader.RecordingRate/PlaybackRate:1)
         );
         _snprintf(ret,retlen,"%d",l);
       } else {            // need GD3
@@ -1971,7 +2405,7 @@ __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadat
           i=gzread(fh,&GD3Header,sizeof(GD3Header));
           if (
             (i==sizeof(GD3Header)) &&
-            (strncmp(GD3Header.IDString,"Gd3 ",4)==0) &&
+            (GD3Header.GD3Ident == GD3IDENT) &&
             (GD3Header.Version>=MINGD3VERSION) &&
             ((GD3Header.Version & REQUIREDGD3MAJORVER)==REQUIREDGD3MAJORVER) &&
             !((GD3Header.Version==0x100) && (tagindex>10))  // GD3 1.00 = 10 fields
@@ -2001,7 +2435,10 @@ __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadat
               switch(tagindex) {
               case 2:
               case 3: // album: append " (FM)" for FM soundtracks if wanted
-                if(MLShowFM && VGMHeader.FMClock) strncat(ret," (FM)",retlen-strlen(ret));
+                if(MLShowFM && VGMHeader.YM2413Clock) strncat(ret," (FM)",retlen-strlen(ret));
+                break;
+              case 8: // year: make it the first 4 digits
+                if(strlen(ret)>4) ret[4]=0;
                 break;
               }
           }
@@ -2011,5 +2448,18 @@ __declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadat
     gzclose(fh);
   }
   
-  return (*ret!='\0');
+  // more special cases
+  switch(tagindex) {
+    case 11:
+      // track number
+      if(*ret==0) {
+        int i=getTrackNumber(filename);
+        if(i>0) _snprintf(ret,retlen,"%d",i);
+      }
+      break;
+  }
+
+  //MessageBox(0,metadata,0,0);
+
+  return 1;//(*ret!='\0');
 }
