@@ -51,9 +51,9 @@ enum mute_values {
 
 typedef struct
 {
-    /* expose this for inspection/modification for channel muting */
-    int Mute;
+    int Mute; // per-channel muting
     int VolumeArray;
+    int BoostNoise; // double noise volume when non-zero
     
     /* Variables */
     float Clock;
@@ -83,7 +83,7 @@ typedef struct
 void SN76489_Init(int which, int PSGClockValue, int SamplingRate);
 void SN76489_Reset(int which);
 void SN76489_Shutdown(void);
-void SN76489_Config(int which, int mute, int volume, int feedback, int SRWidth);
+void SN76489_Config(int which, int mute, int volume, int feedback, int sw_width, int boost_noise);
 void SN76489_SetContext(int which, uint8 *data);
 void SN76489_GetContext(int which, uint8 *data);
 uint8 *SN76489_GetContextPtr(int which);

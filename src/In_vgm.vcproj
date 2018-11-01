@@ -16,7 +16,8 @@
 			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE">
+			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			WholeProgramOptimization="TRUE">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="3"
@@ -29,8 +30,7 @@
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				StringPooling="TRUE"
 				MinimalRebuild="FALSE"
-				RuntimeLibrary="2"
-				EnableFunctionLevelLinking="FALSE"
+				RuntimeLibrary="0"
 				PrecompiledHeaderFile=".\Release/In_vgm.pch"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
@@ -42,8 +42,7 @@
 				Name="VCCustomBuildTool"/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalOptions="/FORCE:MULTIPLE"
-				AdditionalDependencies="zlib.lib comctl32.lib"
+				AdditionalDependencies="comctl32.lib zlib.lib"
 				ShowProgress="0"
 				OutputFile="c:\program Files\winamp\plugins\in_vgm.dll"
 				LinkIncremental="1"
@@ -53,6 +52,7 @@
 				ProgramDatabaseFile=".\Release/in_vgm.pdb"
 				SubSystem="2"
 				OptimizeForWindows98="1"
+				EntryPointSymbol=""
 				ImportLibrary=".\Release/in_vgm.lib"
 				TargetMachine="1"/>
 			<Tool
@@ -90,7 +90,8 @@
 			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE">
+			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			WholeProgramOptimization="TRUE">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
@@ -216,9 +217,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\mame_fm.c">
-			</File>
-			<File
 				RelativePath="mame_ym2151.c">
 				<FileConfiguration
 					Name="Release|Win32">
@@ -272,6 +270,9 @@
 			<File
 				RelativePath=".\resource.h">
 			</File>
+			<File
+				RelativePath=".\vgm.h">
+			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
@@ -300,6 +301,9 @@
 			</File>
 			<File
 				RelativePath="in_vgm.txt">
+			</File>
+			<File
+				RelativePath=".\vgmspec150.txt">
 			</File>
 		</Filter>
 	</Files>

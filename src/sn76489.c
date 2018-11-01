@@ -40,7 +40,7 @@ void SN76489_Init(int which, int PSGClockValue, int SamplingRate)
 {
     SN76489_Context *p = &SN76489[which];
     p->dClock=(float)PSGClockValue/16/SamplingRate;
-    SN76489_Config(which, MUTE_ALLON, VOL_FULL, FB_SEGAVDP, SRW_SEGAVDP);
+    SN76489_Config(which, MUTE_ALLON, VOL_FULL, FB_SEGAVDP, SRW_SEGAVDP, 1);
     SN76489_Reset(which);
 }
 
@@ -85,7 +85,7 @@ void SN76489_Shutdown(void)
 {
 }
 
-void SN76489_Config(int which, int mute, int volume, int feedback, int sr_width)
+void SN76489_Config(int which, int mute, int volume, int feedback, int sr_width, int boost_noise)
 {
     SN76489_Context *p = &SN76489[which];
 
@@ -93,6 +93,7 @@ void SN76489_Config(int which, int mute, int volume, int feedback, int sr_width)
     p->VolumeArray = volume;
     p->WhiteNoiseFeedback = feedback;
     p->SRWidth = sr_width;
+    p->BoostNoise = boost_noise;
 }
 
 void SN76489_SetContext(int which, uint8 *data)
@@ -170,7 +171,7 @@ void SN76489_Update(int which, INT16 **buffer, int length)
     
         p->Channels[3]=(short)((p->Mute >> 3 & 0x1)*PSGVolumeValues[p->VolumeArray][p->Registers[7]]*(p->NoiseShiftRegister & 0x1));
     
-        p->Channels[3]<<=1; /* double noise volume */
+        if (p->BoostNoise) p->Channels[3]<<=1; /* double noise volume */
     
         buffer[0][j] =0;
         buffer[1][j] =0;

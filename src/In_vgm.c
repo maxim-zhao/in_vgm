@@ -2,8 +2,9 @@
 // in_vgm
 // VGM audio input plugin for Winamp
 // http://www.smspower.org/music
-// by Maxim <maxim@mwos.cjb.net> in 2001-2005
+// by Maxim <maxim\x40smspower\x2eorg> in 2001-2005
 // with help from BlackAura in March and April 2002
+// YM2612 PCM additions with Blargg in November 2005
 //-----------------------------------------------------------------
 
 #define YM2612GENS // Use Gens YM2612 rather than MAME
@@ -15,7 +16,7 @@
 #define MAMEYM2612RelativeVol 3  // Mega Drive/Genesis
 #define YM2151RelativeVol 4 // CPS1
 
-#define PLUGINNAME "VGM input plugin v0.32"// beta test"   " "__DATE__" "__TIME__
+#define PLUGINNAME "VGM input plugin v0.33"  // " "__DATE__" "__TIME__
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
@@ -39,8 +40,10 @@
 #include <commctrl.h>
 #include <math.h>
 #include <zlib.h>
-
+#include <assert.h>
 #include "in2.h"
+
+#include "vgm.h"
 
 // #define EMU2413_COMPACTION
 #include "emu2413.h"
@@ -66,12 +69,7 @@ typedef unsigned short wchar;  // For Unicode strings
 
 HANDLE PluginhInst;
 
-// avoid CRT. Evil. Big. Bloated.
-#ifdef _DLL
-BOOL WINAPI _DllMainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved) {
-#else
-BOOL WINAPI _mainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved) {
-#endif
+BOOL WINAPI DllMain(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved) {
   PluginhInst=hInst;
   return TRUE;
 }
@@ -104,26 +102,6 @@ OPLL *opll;  // EMU2413 structure
 
 #define USINGCHIP(chip) (FMChips&chip)
 
-#define VGMIDENT 0x206d6756 // "Vgm "
-
-struct TVGMHeader {
-  unsigned long VGMIdent;               // "Vgm "
-  unsigned long EoFOffset;              // relative offset (from this point, 0x04) of the end of file
-  unsigned long Version;                // 0x00000110 for 1.10
-  unsigned long PSGClock;               // typically 3579545, 0 for no PSG
-  unsigned long YM2413Clock;            // typically 3579545, 0 for no YM2413
-  unsigned long GD3Offset;              // relative offset (from this point, 0x14) of the GD3 tag, 0 if not present
-  unsigned long TotalLength;            // in samples
-  unsigned long LoopOffset;             // relative again (to 0x1c), 0 if no loop
-  unsigned long LoopLength;             // in samples, 0 if no loop
-  unsigned long RecordingRate;          // in Hz, for speed-changing, 0 for no changing
-  unsigned short PSGWhiteNoiseFeedback; // Feedback pattern for white noise generator; if <=v1.01, substitute default of 0x0009
-  unsigned char PSGShiftRegisterWidth;  // Shift register width for noise channel; if <=v1.01, substitute default of 16
-  unsigned char Reserved;
-  unsigned long YM2612Clock;            // typically 3579545, 0 for no YM2612
-  unsigned long YM2151Clock;            // typically 3579545, 0 for no YM2151
-};
-
 #define GD3IDENT 0x20336447 // "Gd3 "
 
 struct TGD3Header {
@@ -148,6 +126,7 @@ int
   NumLoopsDone,       // how many loops we've played
   LoopLengthInms,     // length of looped section in ms
   LoopOffset,         // File offset of looped data start
+  VGMDataOffset,      // File offset of data start
   PSGClock=0,         // SN76489 clock rate
   YM2413Clock=0,      // FM clock rates
   YM2612Clock=0,      // 
@@ -186,6 +165,11 @@ char
 char
   *FilenameForInfoDlg;      // Filename passed to file info dialogue
 
+// Blargg: PCM data for current file (loaded in play thread)
+static unsigned char* pcm_data = NULL;
+static unsigned long pcm_data_size;
+static unsigned long pcm_pos;
+
 //-----------------------------------------------------------------
 // Check if string is a URL
 //-----------------------------------------------------------------
@@ -196,7 +180,7 @@ int IsURL(char *url) {
     (strstr(url,"www."   )==url)
   ) return 1;
   return 0;
-};
+}
 
 //-----------------------------------------------------------------
 // Open URL in minibrowser or browser
@@ -221,7 +205,7 @@ void OpenURL(char *url) {
     free(url);
   }
   else ShellExecute(mod.hMainWindow,NULL,TextFileName,NULL,NULL,SW_SHOWNORMAL);
-};
+}
 
 char * printtime(char *s,double timeinseconds) {
   int hours=(int)timeinseconds/3600;
@@ -277,7 +261,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
   ) {
     gzclose(fh);
     return;
-  };
+  }
   gzseek(fh,VGMHeader.GD3Offset+0x14,SEEK_SET);
   i=gzread(fh,&GD3Header,sizeof(GD3Header));
   if (
@@ -288,7 +272,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
   ) {
     gzclose(fh);
     return;
-  };
+  }
   p=malloc(GD3Header.Length*2);  // Allocate memory for string data (x2 for Unicode)
   i=gzread(fh,p,GD3Header.Length*2);  // Read it in
   gzclose(fh);
@@ -305,7 +289,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
 
   fprintf(f,"<tr><td class=what>Length</td><td colspan=2 class=is>%s",printtime(tempstr,VGMHeader.TotalLength/44100.0));
   if(VGMHeader.LoopLength>0) {
-    if(VGMHeader.TotalLength-VGMHeader.LoopLength>22050) {
+    if(VGMHeader.TotalLength-VGMHeader.LoopLength>22050) { // ignore intros less than 0.5s since they're probably nothing
       fprintf(f," (%s intro",printtime(tempstr,(VGMHeader.TotalLength-VGMHeader.LoopLength)/44100.0));
       fprintf(f," and %s loop)",printtime(tempstr,VGMHeader.LoopLength/44100.0));
     } else
@@ -330,7 +314,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
       fputs("</td><td class=is>",f);
 
     GD3string+=wcslen(GD3string)+1;
-  };
+  }
   for (i=8;i<10;++i) {
     fprintf(f,"<tr><td class=what>%s</td><td colspan=2 class=is>",What[i]);
     if (wcslen(GD3string))  // have a string
@@ -340,7 +324,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
       fputs("&nbsp;",f);
     fputs("</td></tr>",f);
     GD3string+=wcslen(GD3string)+1;
-  };
+  }
   fputs("<tr><td class=what>Notes</td><td colspan=2 class=is>",f);
 
   for (j=0;j<(int)wcslen(GD3string);++j) {
@@ -348,7 +332,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
       fprintf(f,"<br>");
     else
       fprintf(f,"&#%d;",*(GD3string+j));
-  };
+  }
 
   fputs(
     #include "htmlafter.txt"
@@ -367,7 +351,7 @@ void InfoInBrowser(char *filename, int ForceOpen) {
     free(url);
   }
   else ShellExecute(mod.hMainWindow,NULL,TextFileName,NULL,NULL,SW_SHOWNORMAL);
-};
+}
 
 void UpdateIfPlaying() {
   if (ImmediateUpdate
@@ -461,7 +445,7 @@ void MakeTabbedDialogue(HWND hWndMain) {
   
   // Create child windows (resource hog, I don't care)
   CfgPlayback =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgPlayback,hWndMain,ConfigDialogProc);
-  CfgTags      =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgTags,    hWndMain,ConfigDialogProc);
+  CfgTags     =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgTags,    hWndMain,ConfigDialogProc);
   CfgPSG      =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgPSG,     hWndMain,ConfigDialogProc);
   Cfg2413     =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgYM2413,  hWndMain,ConfigDialogProc);
   CfgOthers   =CreateDialog(PluginhInst,(LPCTSTR) DlgCfgOthers,  hWndMain,ConfigDialogProc);
@@ -479,17 +463,17 @@ void MakeTabbedDialogue(HWND hWndMain) {
         (IsThemeDialogTextureEnabled)&&(EnableThemeDialogTexture)&& // All functions found
         (IsThemeDialogTextureEnabled(hWndMain))) { // and app is themed
         for (i=0;i<NumCfgTabChildWnds;++i) EnableThemeDialogTexture(CfgTabChildWnds[i],6); // then draw pages with theme texture
-      };
+        }
       FreeLibrary(dllinst);
-    };
-  };
+    }
+  }
 
   // Put them in the right place, and hide them
   for (i=0;i<NumCfgTabChildWnds;++i) 
     SetWindowPos(CfgTabChildWnds[i],HWND_TOP,TabDisplayRect.left,TabDisplayRect.top,TabDisplayRect.right-TabDisplayRect.left,TabDisplayRect.bottom-TabDisplayRect.top,SWP_HIDEWINDOW);
   // Show the first one, though
   SetWindowPos(CfgTabChildWnds[0],HWND_TOP,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_SHOWWINDOW);
-};
+}
 
 // Dialogue box callback function
 BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam) {
@@ -498,6 +482,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
       int i;
       if (GetWindowLong(DlgWin,GWL_STYLE)&WS_CHILD) return FALSE;
       MakeTabbedDialogue(DlgWin);
+
+      SetWindowText(DlgWin,PLUGINNAME " configuration");
 
       // Playback tab -----------------------------------------------------------
 #define WND CfgPlayback
@@ -521,14 +507,14 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
         default:
           CheckRadioButton(WND,rbRateOriginal,rbRateOther,rbRateOther);
           break;
-      };
+      }
       EnableWindow(GetDlgItem(WND,ebPlaybackRate),(IsDlgButtonChecked(WND,rbRateOther)?TRUE:FALSE));
       if (PlaybackRate!=0) {
         char tempstr[18];  // buffer for itoa
         SetDlgItemText(WND,ebPlaybackRate,itoa(PlaybackRate,tempstr,10));
       } else {
         SetDlgItemText(WND,ebPlaybackRate,"60");
-      };
+      }
       // Volume overdrive
       CheckDlgButton(WND,cbOverDrive,Overdrive);
       // Persistent muting checkbox
@@ -710,8 +696,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
             PlaybackRate=60;
           } else if (IsDlgButtonChecked(CfgPlayback,rbRateOther)) {
             i=GetDlgItemInt(CfgPlayback,ebPlaybackRate,&MyBool,TRUE);
-            if ((MyBool) && (i>0) && (i<500)) PlaybackRate=i;
-          };
+            if ((MyBool) && (i>0) && (i<=6000)) PlaybackRate=i;
+          }
           // Persistent muting checkbox
           MutePersistent=IsDlgButtonChecked(CfgPlayback,cbMutePersistent);
           // Randomise panning checkbox
@@ -727,7 +713,7 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
           if (MyBool) MLType=i;
 
 
-        };
+        }
         EndDialog(DlgWin,0);
         return (TRUE);
       case IDCANCEL:  // [X] button, Alt+F4, etc
@@ -780,21 +766,21 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
         CheckDlgButton(Cfg2413,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
         CheckDlgButton(Cfg2413,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
         break;
-      };
+      }
       case cbYM2413ToneAll: {
         int i;
         const int Checked=IsDlgButtonChecked(Cfg2413,cbYM2413ToneAll);
         for (i=0;i<9;i++) CheckDlgButton(Cfg2413,cbYM24131+i,Checked);
         PostMessage(Cfg2413,WM_COMMAND,cbYM24131,0);
         break;
-      };
+      }
       case cbYM2413PercAll: {
         int i;
         const int Checked=IsDlgButtonChecked(Cfg2413,cbYM2413PercAll);
         for (i=0;i<5;i++) CheckDlgButton(Cfg2413,cbYM241310+i,Checked);
         PostMessage(Cfg2413,WM_COMMAND,cbYM24131,0);
         break;
-      };
+      }
       case cbYM2413HiQ:
         YM2413HiQ=IsDlgButtonChecked(Cfg2413,cbYM2413HiQ);
         if USINGCHIP(FM_YM2413) {
@@ -946,11 +932,11 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
       return TRUE;
   }
   return (FALSE) ;    // return FALSE to signify message not processed
-};
+}
 
 void config(HWND hwndParent) {
   DialogBox(mod.hDllInstance, "CONFIGDIALOGUE", hwndParent, ConfigDialogProc);
-};
+}
 
 //-----------------------------------------------------------------
 // About dialogue
@@ -1018,7 +1004,8 @@ void init() {
     for ( i = 0; i < YM2413_NUM_CHANNELS; ++i ) YM2413_Pan[i] = 127;
   RandomisePanning    =GetPrivateProfileInt(INISECTION,"Randomise panning"     ,1    ,INIFileName);
 
-};
+  pcm_data = NULL;
+}
 
 //-----------------------------------------------------------------
 // Deinitialisation (one-time)
@@ -1055,25 +1042,29 @@ void quit() {
   WritePrivateProfileString(INISECTION,"Randomise panning"   ,itoa(RandomisePanning     ,tempstr,10),INIFileName);
 
   DeleteFile(TextFileName);
-};
+}
 
 //-----------------------------------------------------------------
 // Pre-extension check file claiming
 //-----------------------------------------------------------------
 int isourfile(char *fn) {
+  // First, check for URLs
+  gzFile *f;
   char *p=strrchr(fn,'.');
+  if ( (p) && ( (stricmp(p,".vgm")==0) || (stricmp(p,".vgz")==0) ) && IsURL(fn) ) return TRUE;
 
-  return (
-    (p) && (
-      (strcmpi(p,".vgm")==0) ||
-      (strcmpi(p,".vgz")==0)
-    )
-    &&
-    IsURL(fn)
-  );
-  // I must be getting good at this, that line is quite
-  // impressively obfuscated
-};
+  // second, check the file itself
+  f = gzopen( fn, "rb" );
+  if (f) {
+    unsigned long i = 0;
+    gzread( f, &i, sizeof(i) );
+    gzclose( f );
+    if ( i == VGMIDENT )
+      return TRUE;
+  }
+
+  return FALSE;
+}
 /*
 //-----------------------------------------------------------------
 // File download callback function
@@ -1087,10 +1078,10 @@ BOOL CALLBACK DownloadDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
                 case IDCANCEL:  // [X] button, Alt+F4, etc
                     EndDialog(DlgWin,1);
                     return (TRUE) ;
-        };
-    };
+        }
+    }
     return (FALSE);    // return FALSE to signify message not processed
-};
+}
 */
 char *URLEncode(char *s) {
   // URL encode string s
@@ -1163,9 +1154,9 @@ int play(char *fn) {
       strcpy(fn,CurrentURLFilename);
     } else {
       return -1;  // File not found
-    };
+    }
 
-  };
+  }
 
   if ((!MutePersistent) && (*lastfn) && (strcmp(fn,lastfn)!=0)) {
     // If file has changed, reset channel muting (if not blocked)
@@ -1173,7 +1164,7 @@ int play(char *fn) {
     YM2413Channels=YM2413_MUTE_ALLON;
     YM2612Channels=YM2612_MUTE_ALLON;
     YM2151Channels=YM2151_MUTE_ALLON;
-  };
+  }
 
   // If wanted, randomise panning
   if ( RandomisePanning )
@@ -1186,11 +1177,17 @@ int play(char *fn) {
 
   strcpy(lastfn,fn);
   
+  // Blargg - free PCM data
+  if (pcm_data) free( pcm_data );
+  pcm_data = NULL;
+  pcm_data_size = 0;
+  pcm_pos = 0;
+
   InputFile=gzopen(fn,"rb");  // Open file - read, binary
 
   if (InputFile==NULL) {
     return -1;
-  };  // File not opened/found, advance playlist
+  }  // File not opened/found, advance playlist
 
   // Get file size for bitrate calculations 
   f=CreateFile(fn,GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
@@ -1208,7 +1205,7 @@ int play(char *fn) {
     gzclose(InputFile);
     InputFile=NULL;
     return -1;
-  };
+  }
 
   // Check for VGM marker
   if (VGMHeader.VGMIdent != VGMIDENT) {
@@ -1218,7 +1215,7 @@ int play(char *fn) {
     gzclose(InputFile);
     InputFile=NULL;
     return -1;
-  };
+  }
 
   // Check version
   if ((VGMHeader.Version<MINVERSION) || ((VGMHeader.Version & REQUIREDMAJORVER)!=REQUIREDMAJORVER)) {
@@ -1229,8 +1226,8 @@ int play(char *fn) {
       gzclose(InputFile);
       InputFile=NULL;
       return -1;
-    };
-  };
+    }
+  }
 
   // Fix stuff for older version files:
   // Nothing to fix for 1.01
@@ -1241,12 +1238,19 @@ int play(char *fn) {
     VGMHeader.YM2151Clock = VGMHeader.YM2413Clock;
   }
 
+  // handle VGM data offset
+  if ( VGMHeader.VGMDataOffset == 0 )
+    VGMDataOffset = 0x40;
+  else
+    // header has a value, but it is relative; make it absolute
+    VGMDataOffset = VGMHeader.VGMDataOffset + VGMDATADELTA;
+
   // Get length
   if (VGMHeader.TotalLength==0) {
     TrackLengthInms=0;
   } else {
     TrackLengthInms=(int)(VGMHeader.TotalLength/44.1);
-  };
+  }
 
   // Get loop data
   if (VGMHeader.LoopLength==0) {
@@ -1255,7 +1259,7 @@ int play(char *fn) {
   } else {
     LoopLengthInms=(int)(VGMHeader.LoopLength/44.1);
     LoopOffset=VGMHeader.LoopOffset+0x1c;
-  };
+  }
 
   // Get clock values
   PSGClock=VGMHeader.PSGClock;
@@ -1275,7 +1279,7 @@ int play(char *fn) {
     gzclose(InputFile);
     InputFile=NULL;
     return 1;
-  };
+  }
 
   // Set info
   if (TrackLengthInms==0) {
@@ -1286,7 +1290,7 @@ int play(char *fn) {
       SAMPLERATE/1000,      // Sampling rate /kHz
       NCH,            // Channels
       1);              // Synched (?)
-  };
+  }
 
   // Open page in MB if wanted
   if (UseMB & AutoMB) {
@@ -1300,14 +1304,14 @@ int play(char *fn) {
 
   mod.outMod->SetVolume(-666); // set the output plug-ins default volume
 
-  gzseek(InputFile,0x40,SEEK_SET);
+  gzseek(InputFile,VGMDataOffset,SEEK_SET);
 
   // FM Chip startups are done whenever a chip is used for the first time
 
   // Start up SN76489 (if used)
   if (PSGClock) {
     SN76489_Init(0,PSGClock,SAMPLERATE);
-    SN76489_Config(0,SN76489_Mute,SN76489_VolumeArray,VGMHeader.PSGWhiteNoiseFeedback, VGMHeader.PSGShiftRegisterWidth);
+    SN76489_Config(0,SN76489_Mute,SN76489_VolumeArray,VGMHeader.PSGWhiteNoiseFeedback, VGMHeader.PSGShiftRegisterWidth, ((int)(VGMHeader.YM2612Clock/1000000)==7?0:1) ); // nasty hack: boost noise except for YM2612 music
     SN76489_SetPanning(0,SN76489_Pan[0],SN76489_Pan[1],SN76489_Pan[2],SN76489_Pan[3]);
   }
 
@@ -1321,7 +1325,8 @@ int play(char *fn) {
   // Start up decode thread
   killDecodeThread=0;
   thread_handle = CreateThread(NULL,0,(LPTHREAD_START_ROUTINE) DecodeThread,(void *) &killDecodeThread,0,&thread_id);
-  // Set it to highest priority to avoid breaks
+  // Set it to high priority to avoid breaks
+//  SetThreadPriority(thread_handle,THREAD_PRIORITY_ABOVE_NORMAL);
   SetThreadPriority(thread_handle,THREAD_PRIORITY_HIGHEST);
   
   return 0; 
@@ -1333,7 +1338,7 @@ int play(char *fn) {
 void pause() {
   paused=1;
   mod.outMod->Pause(1);
-};
+}
 
 //-----------------------------------------------------------------
 // Unpause
@@ -1341,14 +1346,14 @@ void pause() {
 void unpause() {
   paused=0;
   mod.outMod->Pause(0);
-};
+}
 
 //-----------------------------------------------------------------
 // Is it paused?
 //-----------------------------------------------------------------
 int ispaused() {
   return paused;
-};
+}
 
 //-----------------------------------------------------------------
 // Stop
@@ -1363,11 +1368,11 @@ void stop() {
     }
     CloseHandle(thread_handle);
     thread_handle = INVALID_HANDLE_VALUE;
-  };
+  }
   if (InputFile!=NULL) {
     gzclose(InputFile);  // Close input file
     InputFile=NULL;
-  };
+  }
 
   mod.outMod->Close();  // close output plugin
 
@@ -1393,7 +1398,7 @@ void stop() {
   // not needed
 
   SendMessage(mod.hMainWindow,WM_USER,0,248); // let Now Playing work as normal
-};
+}
 
 //-----------------------------------------------------------------
 // Get track length in ms
@@ -1432,7 +1437,7 @@ void setoutputtime(int time_in_ms) {
     OPLL_setMask(opll,YM2413Channels);
     for ( i = 0; i < YM2413_NUM_CHANNELS; ++i )
       OPLL_set_pan( opll, i, YM2413_Pan[i] );
-  };
+  }
 
   if USINGCHIP(FM_YM2612) {
 #ifdef YM2612GENS
@@ -1440,13 +1445,13 @@ void setoutputtime(int time_in_ms) {
 #else
     YM2612ResetChip(0);
 #endif
-  };
+  }
 
   if USINGCHIP(FM_YM2151) {
     YM2151ResetChip(0);
-  };
+  }
 
-  gzseek(InputFile,0x40,SEEK_SET);
+  gzseek(InputFile,VGMDataOffset,SEEK_SET);
   NumLoopsDone=0;
 
   if (LoopLengthInms>0) {  // file is looped
@@ -1454,7 +1459,7 @@ void setoutputtime(int time_in_ms) {
     while (time_in_ms>TrackLengthInms) {
       ++NumLoopsDone;
       time_in_ms-=LoopLengthInms;
-    };
+    }
     SeekToSampleNumber=(int)(time_in_ms*44.1);
     mod.outMod->Flush(time_in_ms+NumLoopsDone*LoopLengthInms);
   } else {        // Not looped
@@ -1462,7 +1467,7 @@ void setoutputtime(int time_in_ms) {
     mod.outMod->Flush(time_in_ms);
 
     if (time_in_ms>TrackLengthInms) NumLoopsDone=NumLoops+1; // for seek-past-eof in non-looped files
-  };
+  }
 
   // If seeking beyond EOF...
   if (NumLoopsDone>NumLoops) {
@@ -1474,8 +1479,8 @@ void setoutputtime(int time_in_ms) {
         return;
       }
       Sleep(10);  // otherwise wait 10ms and try again
-    };
-  };
+    }
+  }
 
   if (!paused) mod.outMod->Pause(0);
 }
@@ -1485,14 +1490,14 @@ void setoutputtime(int time_in_ms) {
 //-----------------------------------------------------------------
 void setvolume(int volume) {
   mod.outMod->SetVolume(volume);
-};
+}
 
 //-----------------------------------------------------------------
 // Set balance - sent to output plugin
 //-----------------------------------------------------------------
 void setpan(int pan) {
   mod.outMod->SetPan(pan);
-};
+}
 
 //-----------------------------------------------------------------
 // File info dialogue
@@ -1526,11 +1531,11 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
           SetDlgItemText(DlgWin,ebFilename,FilenameForInfoDlg);
           SetDlgItemText(DlgWin,ebNotes,"Information unavailable for this URL");
           return (TRUE);
-        };
+        }
       } else {
         // Filename is not a URL
         SetDlgItemText(DlgWin,ebFilename,FilenameForInfoDlg);
-      };
+      }
 
       // Get file size
       {
@@ -1541,7 +1546,7 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
 
         sprintf(tempstr,"%d bytes",FileSize);
         SetDlgItemText(DlgWin,ebSize,tempstr);
-      };
+      }
 
       for (i=0;i<11;++i) GD3Strings[i][0]=L'\0';  // clear strings
 
@@ -1551,7 +1556,7 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
         sprintf(msgstring,"Unable to open:\n%s",FilenameForInfoDlg);
         MessageBox(mod.hMainWindow,msgstring,mod.description,0);
         return (TRUE);
-      };
+      }
       i=gzread(fh,&VGMHeader,sizeof(VGMHeader));
 
       if (i<sizeof(VGMHeader)) {
@@ -1578,6 +1583,13 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
         sprintf(tempstr,"%x.%02x",VGMHeader.Version>>8,VGMHeader.Version&0xff);
         SetDlgItemText(DlgWin,ebVersion,tempstr);
 
+        // change the chip boxes for versions less than 1.10 so they are in the old sense
+        if (VGMHeader.Version<0x0110)
+        {
+          SetDlgItemText(DlgWin,rbYM2413,"FM chips");
+          ShowWindow(GetDlgItem(DlgWin,rbYM2612),FALSE);
+          ShowWindow(GetDlgItem(DlgWin,rbYM2151),FALSE);
+        }
         SendDlgItemMessage(DlgWin,rbSN76489,BM_SETCHECK,(VGMHeader.PSGClock!=0),0);
         SendDlgItemMessage(DlgWin,rbYM2413,BM_SETCHECK,(VGMHeader.YM2413Clock!=0),0);
         SendDlgItemMessage(DlgWin,rbYM2612,BM_SETCHECK,(VGMHeader.YM2612Clock!=0),0);
@@ -1616,7 +1628,7 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
               for (i=0;i<11;++i) {
                 wcscpy(GD3Strings[i],GD3string);
                 GD3string+=wcslen(GD3string)+1;
-              };
+              }
 
               // special handling for any strings?
               // Notes: change \n to \r\n so Windows shows it properly
@@ -1626,10 +1638,10 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
                   if (*wp==L'\n') {
                     memmove(wp+1,wp,(wcslen(wp)+1)*2);
                     *wp=L'\r';                    
-                  };
+                  }
                   wp--;
-                };
-              };
+                }
+              }
 
               free(p);  // Free memory for string buffer
 
@@ -1640,8 +1652,8 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
                   char MBCSstring[1024*2]="";
                   WideCharToMultiByte(CP_ACP,0,GD3Strings[i],-1,MBCSstring,1024*2,NULL,NULL);
                   SetDlgItemText(DlgWin,DlgFields[i],MBCSstring);
-                };
-              };
+                }
+              }
 
               PostMessage(DlgWin,WM_COMMAND,rbEnglish+FileInfoJapanese,0);
           } else {  // Unacceptable GD3 version
@@ -1649,19 +1661,19 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
             sprintf(msgstring,"File too short or unsupported GD3 version (%x) in %s",GD3Header.Version,FilenameForInfoDlg);
             MessageBox(mod.hMainWindow,msgstring,mod.description,0);
             return (TRUE);
-          };
+          }
         } else {  // no GD3 tag
           SetDlgItemText(DlgWin,ebNotes,"No GD3 tag or incompatible GD3 version");
           EnableWindow(GetDlgItem(DlgWin,btnUnicodeText),FALSE);  // disable button if it can't be used
-        };
-      };
+        }
+      }
       gzclose(fh);
 
 
 
       return (TRUE);
-    };
-        case WM_COMMAND:
+    }
+    case WM_COMMAND:
             switch (LOWORD(wParam)) {
         case IDOK:  // OK button
           FileInfoJapanese=IsDlgButtonChecked(DlgWin,rbJapanese);
@@ -1683,9 +1695,9 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
                 char MBCSstring[1024*2]="";
                 WideCharToMultiByte(CP_ACP,0,GD3Strings[i*2+x],-1,MBCSstring,1024*2,NULL,NULL);
                 SetDlgItemText(DlgWin,DlgFields[i*2+x],MBCSstring);
-              };
-            };
-          };
+              }
+            }
+          }
           break;
 /*        case btnURL:
           if (UseMB)
@@ -1698,11 +1710,12 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
           break;
         default:
           break;
-        };
+        }
       break;
     }
     return (FALSE) ;    // return FALSE to signify message not processed
-};
+}
+
 int infoDlg(char *fn, HWND hwnd)
 {
   FilenameForInfoDlg=fn;
@@ -1728,13 +1741,13 @@ void getfileinfo(char *filename, char *title, int *length_in_ms) {
     if (title) strcpy(title,FileToUse);
     if (length_in_ms) *length_in_ms=-1000;
     return;
-  };
+  }
 
   {  // trim to just filename
     char *p=FileToUse+strlen(FileToUse);
     while (*p != '\\' && p >= FileToUse) p--;
     strcpy(JustFileName,++p);
-  };
+  }
 
   {  // get GD3 info
     gzFile  *fh;
@@ -1747,7 +1760,7 @@ void getfileinfo(char *filename, char *title, int *length_in_ms) {
       if (title) sprintf(title,"Unable to open %s",FileToUse);
       if (length_in_ms) *length_in_ms=-1000;
       return;
-    };
+    }
     i=gzread(fh,&VGMHeader,sizeof(VGMHeader));
 
     if (i<sizeof(VGMHeader)) {
@@ -1790,7 +1803,7 @@ void getfileinfo(char *filename, char *title, int *length_in_ms) {
               // Get next string and move the pointer to the next one
               WideCharToMultiByte(CP_ACP,0,GD3string,-1,GD3strings[i],256,NULL,NULL);
               GD3string+=wcslen(GD3string)+1;
-            };
+            }
 
             free(p);  // Free memory for string buffer
 
@@ -1801,8 +1814,8 @@ void getfileinfo(char *filename, char *title, int *length_in_ms) {
               if (!GD3strings[i][0]) {
                 strcpy(GD3strings[i],"Unknown ");
                 strcat(GD3strings[i],What[i]);
-              };
-            };
+              }
+            }
 
             strcpy(TrackTitle,TrackTitleFormat);
 
@@ -1826,28 +1839,28 @@ void getfileinfo(char *filename, char *title, int *length_in_ms) {
                     strcat(After,GD3strings[9]);
                   } else {
                     strcat(After,GD3strings[i*2]);  // add GD3 string
-                  };
+                  }
                   strcat(After,pos+2);  // add text after it
-                };
+                }
                 strcpy(TrackTitle,After);
               } else {
                 i++;
-              };
-            };
+              }
+            }
         } else {
           // Problem with GD3
           sprintf(TrackTitle,"GD3 invalid: %s",JustFileName);
-        };
+        }
       } else {  // No GD3 tag, so use filename
         strcpy(TrackTitle,JustFileName);
-      };
-    };
+      }
+    }
     gzclose(fh);
-  };
+  }
 
   if (title) strcpy(title,TrackTitle);
   if (length_in_ms) *length_in_ms=TrackLength;
-};
+}
 
 void debuglog(int number) {
   FILE *f;
@@ -1859,7 +1872,7 @@ void debuglog(int number) {
 //-----------------------------------------------------------------
 // Input-side EQ - not used
 //-----------------------------------------------------------------
-void eq_set(int on, char data[10], int preamp) {};
+void eq_set(int on, char data[10], int preamp) {}
 
 //-----------------------------------------------------------------
 // Decode thread
@@ -1873,7 +1886,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
     WaitFactor=1.0;
   } else {
     WaitFactor=(float)FileRate/PlaybackRate;
-  };
+  }
 
   while (! *((int *)b) ) {
     if (
@@ -1895,15 +1908,15 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
         // Read file, write stuff
         while (!SamplesTillNextRead) {
           switch (b1=ReadByte()) {
-          case 0x4f:  // GG stereo
+          case VGM_GGST:  // GG stereo
             b1=ReadByte();
             if (PSGClock) SN76489_GGStereoWrite(0,(char)b1);
             break;
-          case 0x50:  // SN76489 write
+          case VGM_PSG:  // SN76489 write
             b1=ReadByte();
             if (PSGClock) SN76489_Write(0,(char)b1);
             break;
-          case 0x51:  // YM2413 write
+          case VGM_YM2413:  // YM2413 write
             b1=ReadByte();
             b2=ReadByte();
             if (YM2413Clock) {
@@ -1919,11 +1932,11 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
                 OPLL_set_quality(opll,YM2413HiQ);
                 // Set the flag for it
                 FMChips|=FM_YM2413;
-              };
+              }
               OPLL_writeReg(opll,b1,b2);  // Write to the chip
             }
             break;
-          case 0x52:  // YM2612 write (port 0)
+          case VGM_YM2612_0:  // YM2612 write (port 0)
             b1=ReadByte();
             b2=ReadByte();
             if (YM2612Clock) {
@@ -1934,7 +1947,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
                 YM2612Init(1,YM2612Clock,SAMPLERATE,NULL,NULL);
 #endif
                 FMChips|=FM_YM2612;
-              };
+              }
 #ifdef YM2612GENS
               YM2612_Write(0,b1);
               YM2612_Write(1,b2);
@@ -1944,7 +1957,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
 #endif
             }
             break;
-          case 0x53:  // YM2612 write (port 1)
+          case VGM_YM2612_1:  // YM2612 write (port 1)
             b1=ReadByte();
             b2=ReadByte();
             if (YM2612Clock) {
@@ -1955,7 +1968,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
                 YM2612Init(1,YM2612Clock,SAMPLERATE,NULL,NULL);
 #endif
                 FMChips|=FM_YM2612;
-              };
+              }
 #ifdef YM2612GENS
               YM2612_Write(2,b1);
               YM2612_Write(3,b2);
@@ -1963,47 +1976,31 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
               YM2612Write(0,2,b1);
               YM2612Write(0,3,b2);
 #endif
-            };
+            }
             break;
-          case 0x54:  // BlackAura - YM2151 write
+          case VGM_YM2151:  // BlackAura - YM2151 write
             b1=ReadByte();
             b2=ReadByte();
             if (YM2151Clock) {
               if (!USINGCHIP(FM_YM2151)) {
                 YM2151Init(1,YM2151Clock,SAMPLERATE);
                 FMChips|=FM_YM2151;
-              };
+              }
               YM2151WriteReg(0,b1,b2);
-            };
+            }
             break;
-          case 0x55:  // Reserved/unsupported
-          case 0x56:  // chips
-          case 0x57:  // (fall through)
-          case 0x58:  //  |
-          case 0x59:  //  |
-          case 0x5a:  //  |
-          case 0x5b:  //  |
-          case 0x5c:  //  |
-          case 0x5d:  //  |
-          case 0x5e:  //  |
-          case 0x5f:  // <-
-            ReadByte();
-            ReadByte();
-            break;
-          case 0x61:  // Wait n samples
+          case VGM_PAUSE_WORD:  // Wait n samples
             b1=ReadByte();
             b2=ReadByte();
             SamplesTillNextRead=b1 | (b2 << 8);
             break;
-          case 0x62:  // Wait 1/60 s
-            SamplesTillNextRead=735;
+          case VGM_PAUSE_60TH:  // Wait 1/60 s
+            SamplesTillNextRead=LEN60TH;
             break;
-          case 0x63:  // Wait 1/50 s
-            SamplesTillNextRead=882;
+          case VGM_PAUSE_50TH:  // Wait 1/50 s
+            SamplesTillNextRead=LEN50TH;
             break;
-//        case 0x64:  // Wait n samples (1 byte)
-//          SamplesTillNextRead=ReadByte();
-//          break;
+          // No-data waits
           case 0x70:
           case 0x71:
           case 0x72:
@@ -2022,7 +2019,88 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
           case 0x7f:
             SamplesTillNextRead=(b1 & 0xf) + 1;
             break;
-          case 0x66:  // End of data
+
+          // (YM2612 sample then short delay)s
+          case 0x81:
+          case 0x82:
+          case 0x83:
+          case 0x84:
+          case 0x85:
+          case 0x86:
+          case 0x87:
+          case 0x88:
+          case 0x89:
+          case 0x8A:
+          case 0x8B:
+          case 0x8C:
+          case 0x8D:
+          case 0x8E:
+          case 0x8F:
+            SamplesTillNextRead = b1 & 0x0f;
+            // fall through
+          case 0x80:  // YM2612 write (port 0) 0x2A (PCM)
+            if (YM2612Clock && pcm_data) {
+              b1 = 0x2A;
+              b2 = pcm_data [pcm_pos++];
+              assert( pcm_pos <= pcm_data_size );
+
+              if (!USINGCHIP(FM_YM2612)) {
+#ifdef YM2612GENS
+                YM2612_Init(YM2612Clock,SAMPLERATE,0);
+#else
+                YM2612Init(1,YM2612Clock,SAMPLERATE,NULL,NULL);
+#endif
+                FMChips|=FM_YM2612;
+              }
+#ifdef YM2612GENS
+              YM2612_Write(0,b1);
+              YM2612_Write(1,b2);
+#else
+              YM2612Write(0,0,b1);
+              YM2612Write(0,1,b2);
+#endif
+            }
+            break;
+            
+          case VGM_YM2612_PCM_SEEK: { // Set position in PCM data
+            unsigned char buf [3];
+            gzread( InputFile, buf, sizeof buf );
+            pcm_pos = buf [2] * 0x10000L + buf [1] * 0x100L + buf [0];
+            assert( pcm_pos < pcm_data_size );
+            break;
+          }
+          
+          case VGM_DATA_BLOCK: { // data block at beginning of file
+            unsigned char buf[6];
+            unsigned long data_size;
+            gzread( InputFile, buf, sizeof(buf));
+            assert( buf[0] == 0x66 );
+            data_size = (buf[5] << 24) | (buf[4] << 16) | (buf[3] << 8) | buf[2];
+            switch (buf[1]) {
+            case VGM_DATA_BLOCK_YM2612_PCM:
+              if ( !pcm_data )
+              {
+                pcm_data_size = data_size;
+            	  pcm_data = malloc( pcm_data_size );
+            	  if ( pcm_data )
+            	  {
+            		  gzread( InputFile, pcm_data, pcm_data_size );
+            		  break; // <-- exits out of (nested) case block on successful load
+            	  }
+              }
+              // ignore data block for subsequent blocks and also on malloc() failure
+        	    gzseek( InputFile, pcm_data_size, SEEK_CUR );
+              break;
+            default:
+              // skip unknown data blocks
+              gzseek( InputFile, data_size, SEEK_CUR );
+              break;
+            }
+            
+        	  break;
+          }
+
+          case VGM_END:  // End of data
             ++NumLoopsDone;  // increment loop count
             // If there's no looping then go to the inter-track pause
             if (LoopOffset==0) {
@@ -2032,26 +2110,41 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
               } else {
                 // End track
                 while (1) {
-                  if (SeekToSampleNumber>-1) break;
                   mod.outMod->CanWrite();  // hmm... does something :P
                   if (!mod.outMod->IsPlaying()) {  // if the buffer has run out
                     PostMessage(mod.hMainWindow,WM_WA_MPEG_EOF,0,0);  // tell WA it's EOF
                     return 0;
                   }
                   Sleep(10);  // otherwise wait 10ms and try again
+                  if (SeekToSampleNumber>-1) break;
                 }
               }
-            } else
-            // if there is looping, and the required number of loops have played, then go to fadeout
-            if ((NumLoopsDone>NumLoops)&&(LoopingFadeOutTotal==-1)) {
-              // Start fade out
-              LoopingFadeOutTotal=(long)LoopingFadeOutms*44100/1000;  // number of samples to fade over
-              LoopingFadeOutCounter=LoopingFadeOutTotal;
+              gzungetc(VGM_END,InputFile);
+            } else {
+              // if there is looping, and the required number of loops have played, then go to fadeout
+              if ((NumLoopsDone>NumLoops)&&(LoopingFadeOutTotal==-1)) {
+                // Start fade out
+                LoopingFadeOutTotal=(long)LoopingFadeOutms*44100/1000;  // number of samples to fade over
+                LoopingFadeOutCounter=LoopingFadeOutTotal;
+              }
+              // Loop the file
+              gzseek(InputFile,LoopOffset,SEEK_SET);
             }
-            // Loop the file
-            gzseek(InputFile,LoopOffset,SEEK_SET);
             break;
-          };  // end case
+
+          default:
+            // Unknown commands
+            if ( b1 >= VGM_RESERVED_1_PARAM_BEGIN && b1 <= VGM_RESERVED_1_PARAM_END )
+              gzseek(InputFile,1,SEEK_CUR);
+            else if ( b1 >= VGM_RESERVED_2_PARAMS_BEGIN && b1 <= VGM_RESERVED_2_PARAMS_END )
+              gzseek(InputFile,2,SEEK_CUR);
+            else if ( b1 >= VGM_RESERVED_3_PARAMS_BEGIN && b1 <= VGM_RESERVED_3_PARAMS_END )
+              gzseek(InputFile,3,SEEK_CUR);
+            else if ( b1 >= VGM_RESERVED_4_PARAMS_BEGIN && b1 <= VGM_RESERVED_4_PARAMS_END )
+              gzseek(InputFile,4,SEEK_CUR);
+            //assert(FALSE); // I want to blow up here when debugging
+            break;
+          }  // end case
 
           // debug
 //          if(SamplesTillNextRead)debuglog(SamplesTillNextRead);
@@ -2066,10 +2159,12 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
             if (SeekToSampleNumber<0) {
               SamplesTillNextRead=-SeekToSampleNumber;
               SeekToSampleNumber=-1;
-            };
+            }
             continue;
-          };
-        };  // end while
+          }
+        }  // end while
+
+        //SamplesTillNextRead<<=4; // speed up by 2^4 = 16
 
         // Write sample
         #if NCH == 2
@@ -2082,7 +2177,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
           if (PSGClock) {
             NumChipsUsed++;
             SN76489_UpdateOne(0,&l,&r);
-          };
+          }
 
           if (YM2413Clock) {
             // YM2413
@@ -2092,7 +2187,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
               OPLL_calc_stereo(opll,channels);
               l += channels[0] / YM2413RelativeVol;
               r += channels[1] / YM2413RelativeVol;
-            };
+            }
           }
 
           if (YM2612Clock) {
@@ -2124,7 +2219,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
             
               l+=Left;
               r+=Right;
-            };
+            }
           }
 
           if (YM2151Clock) {
@@ -2145,13 +2240,13 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
 
               l+=mameLeft ;
               r+=mameRight;
-            };
-          };
+            }
+          }
 
           if ((Overdrive)&&(NumChipsUsed)) {
             l=l*8/NumChipsUsed;
             r=r*8/NumChipsUsed;
-          };
+          }
 
           if (LoopingFadeOutTotal!=-1) { // Fade out
             long v;
@@ -2193,13 +2288,13 @@ DWORD WINAPI __stdcall DecodeThread(void *b) {
               Sleep(10);  // otherwise wait 10ms and try again
             }
           }
-        };
+        }
         #else
         // Mono - not working
         #endif
 
         --SamplesTillNextRead;
-      };
+      }
   
       x=mod.outMod->GetWrittenTime();  // returns time written in ms (used for synching up vis stuff)
       // Check these two later (not important)
@@ -2232,7 +2327,7 @@ In_Module mod =
   PLUGINNAME,
   0,  // hMainWindow
   0,  // hDllInstance
-  "vgz;vgm\0VGM Audio File (*.vgm;*.vgz)\0",
+  "vgm;vgz\0VGM Audio File (*.vgm;*.vgz)\0",
   1,  // is_seekable
   1,  // uses output
   config,
@@ -2263,15 +2358,29 @@ __declspec(dllexport) In_Module *winampGetInModule2() {
   return &mod;
 }
 
+#define NUMGD3TAGS 11
+
+struct TFileTagInfo {
+  char *filename;
+  char* tags[NUMGD3TAGS];
+  long int length;
+} LastFileInfo;
+
 enum {
-  GD3_TITLEEN , GD3_TITLEJP,
+  GD3X_DUMMYBASEVALUE = -1000, // make sure we have values below 0
+  GD3X_TRACKNO,
+  // above here don't need to read the file
+  GD3X_UNKNOWN,
+  // below here need the VGM header
+  GD3X_LENGTH,
+  // below here need the GD3 tag, first must be 0
+  GD3_TITLEEN = 0, GD3_TITLEJP,
   GD3_GAMEEN  , GD3_GAMEJP,
   GD3_SYSTEMEN, GD3_SYSTEMJP,
   GD3_AUTHOREN, GD3_AUTHORJP,
   GD3_DATE,
   GD3_RIPPER,
-  GD3_NOTES,
-  GD3_TRACKNUM // GD3 1.01+
+  GD3_NOTES
 };
 
 wchar *getGD3(int index,wchar *block,int blocklen) {
@@ -2298,14 +2407,12 @@ int getTrackNumber(char *filename) {
   char *p;
   char *fn;
   char buff[1024]; // buffer for reading lines from file
-//  char c; // for remembering the char I clobber from the playlist string when overwriting with ".m3u\0"
   int number=0;
   int linenumber;
 
   playlist=malloc(strlen(filename)+16); // plenty of space in all weird cases
 
   if(playlist) {
-//    strcpy(playlist,filename); // filename in playlist name buffer
     p=strrchr(filename,'\\'); // p points to the last \ in the filename
     if(p){
       // isolate filename
@@ -2316,10 +2423,8 @@ int getTrackNumber(char *filename) {
         while(number==0) {
           p=strstr(p," - "); // find first " - " after current position of p
           if(p) {
-//            c=*(p+3);
             strncpy(playlist,filename,p-filename); // copy filename up until the " - "
             strcpy(playlist+(p-filename),".m3u"); // terminate it with a ".m3u\0"
-//            strncpy(p,".m3u",4); // now it's a playlist filename
 
             f=fopen(playlist,"r"); // try to open file
             if(f) {
@@ -2335,9 +2440,6 @@ int getTrackNumber(char *filename) {
 
               fclose(f);
             }
-//            strncpy(p," - ",3); // restore name for next search
-//            p+=3;
-//            *p=c; // restore clobbered char and make it not match this " - " next iteration
             p++; // make it not find this " - " next iteration
           } else break;
         }
@@ -2349,117 +2451,189 @@ int getTrackNumber(char *filename) {
   return number;
 }
 
-__declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadata,char *ret,int retlen) {
-  int tagindex=-2;
+void LoadInfo(char *filename)
+{
+  // load info from filename into fileinfo
+  gzFile  *fh;
+  struct TVGMHeader VGMHeader;
+  int i;
 
-  if(strcmp(metadata,"type")==0) { // type
+  // mark struct as unusable
+  if (LastFileInfo.filename)
+    free(LastFileInfo.filename);
+  LastFileInfo.filename = NULL;
+
+  fh=gzopen(filename,"rb");
+  if (fh==0) {  // file not opened
+    return;
+  }
+
+  i=gzread(fh,&VGMHeader,sizeof(VGMHeader));
+
+  if (  (i<sizeof(VGMHeader))
+      || (VGMHeader.VGMIdent != VGMIDENT)
+      || ((VGMHeader.Version<MINVERSION) || ((VGMHeader.Version & REQUIREDMAJORVER)!=REQUIREDMAJORVER))
+  ) {
+    gzclose(fh);
+    return;
+  }
+
+  // VGM header OK
+
+  LastFileInfo.length = (long) (
+    (VGMHeader.TotalLength+NumLoops*VGMHeader.LoopLength)
+    /44.1
+    *((PlaybackRate&&VGMHeader.RecordingRate)?(double)VGMHeader.RecordingRate/PlaybackRate:1)
+  );
+
+  // blank GD3 tags
+  for (i=0;i<NUMGD3TAGS;++i) {
+    if (LastFileInfo.tags[i]) free( LastFileInfo.tags[i] );
+    LastFileInfo.tags[i] = NULL;
+  }
+
+  if (VGMHeader.GD3Offset>0) {
+    // GD3 tag exists
+    struct TGD3Header  GD3Header;
+    gzseek(fh,VGMHeader.GD3Offset+0x14,SEEK_SET);
+    i=gzread(fh,&GD3Header,sizeof(GD3Header));
+    if (
+      (i==sizeof(GD3Header)) &&
+      (GD3Header.GD3Ident == GD3IDENT) &&
+      (GD3Header.Version>=MINGD3VERSION) &&
+      ((GD3Header.Version & REQUIREDGD3MAJORVER)==REQUIREDGD3MAJORVER)
+    ) {
+      // GD3 is acceptable version
+      wchar *GD3data,*p;
+
+      GD3data=malloc(GD3Header.Length);  // Allocate memory for string data
+      gzread(fh,GD3data,GD3Header.Length);  // Read it in
+
+      // convert into struct
+      p = GD3data;
+      for (i=0; i<NUMGD3TAGS; ++i)
+      {
+        // get the length
+        int len = WideCharToMultiByte(CP_ACP,0,p,-1,NULL,0,NULL,NULL);
+        if ( len > 0 )
+        {
+          // allocate buffer
+          LastFileInfo.tags[i] = malloc(len+1);
+          // convert tag into it
+          if (LastFileInfo.tags[i])
+            WideCharToMultiByte(CP_ACP,0,p,-1,LastFileInfo.tags[i],len,NULL,NULL);
+
+          // special cases?
+          switch(i) {
+          case GD3_GAMEEN:
+          case GD3_GAMEJP: // album: append " (FM)" for FM soundtracks if wanted; hack: not for 7MHzish clocks
+            if ( MLShowFM 
+              && VGMHeader.YM2413Clock 
+              && (VGMHeader.YM2413Clock / 1000000)!=7 )
+            {
+              // re-allocate with a bit on the end and replace original
+              char *buffer = malloc(len+6);
+              if(buffer)
+              {
+                sprintf(buffer,"%s (FM)",LastFileInfo.tags[i]);
+                free(LastFileInfo.tags[i]);
+                LastFileInfo.tags[i] = buffer;
+              }
+            }
+            break;
+          case GD3_DATE: // year: make it the first 4 digits
+            if(strlen(LastFileInfo.tags[i])>4) LastFileInfo.tags[i][4]=0;
+            break;
+          }
+        }
+        // move pointer on
+        p += wcslen(p)+1;
+      }
+
+      free(GD3data);  // Free memory for string buffer
+    }
+  }
+  gzclose(fh);
+  
+  // copy filename
+  LastFileInfo.filename = malloc(strlen(filename)+1);
+  strcpy(LastFileInfo.filename, filename);
+  // done!
+}
+
+__declspec(dllexport) int winampGetExtendedFileInfo(char *filename,char *metadata,char *ret,int retlen) {
+  // return zero on failure
+  int tagindex=GD3X_UNKNOWN;
+
+  // can't do anything with no buffer
+  if(!ret || !retlen)
+    return 0;
+
+  // first, tags that don't need to look at the file itself
+  if(stricmp(metadata,"type")==0) { // type
     _snprintf(ret,retlen,"%d",MLType);
     return 1;
   }
-
-  *ret='\0';
-  
-  if(stricmp(metadata,"artist")==0)        tagindex=6;   // author
-  else if(stricmp(metadata,"length")==0)   tagindex=-1;  // length /ms
-  else if(stricmp(metadata,"title")==0)    tagindex=0;   // track title
-  else if(stricmp(metadata,"album")==0)    tagindex=2;   // game name
-  else if(stricmp(metadata,"comment")==0)  tagindex=10;  // comment
-  else if(stricmp(metadata,"year")==0)     tagindex=8;   // year
-  else if(stricmp(metadata,"genre")==0)    tagindex=4;   // system
-  else if(stricmp(metadata,"track")==0)    tagindex=11;  // track number
-
-//  if(tagindex==-2)MessageBox(0,metadata,"Unknown",0); // debug: get metadata types
-    
-  if((MLJapanese)&&(tagindex>=0)&&(tagindex<=6)) tagindex++; // Increment index for Japanese
-
-  if(tagindex>-2){ // A type I know of!
-    gzFile  *fh;
-    struct TVGMHeader  VGMHeader;
-    int i;
-
-    fh=gzopen(filename,"rb");
-    if (fh==0) {  // file not opened
-      return 0;
-    };
-    i=gzread(fh,&VGMHeader,sizeof(VGMHeader));
-
-    if (  (i<sizeof(VGMHeader))
-       || (VGMHeader.VGMIdent != VGMIDENT)
-       || ((VGMHeader.Version<MINVERSION) || ((VGMHeader.Version & REQUIREDMAJORVER)!=REQUIREDMAJORVER))
-    ) return 0;
-    else {
-      // VGM header OK
-
-      if(tagindex==-1) { // track length wanted
-        long int l=(long int)(
-          (VGMHeader.TotalLength+NumLoops*VGMHeader.LoopLength)
-          /44.1
-          *((PlaybackRate&&VGMHeader.RecordingRate)?(double)VGMHeader.RecordingRate/PlaybackRate:1)
-        );
-        _snprintf(ret,retlen,"%d",l);
-      } else {            // need GD3
-        if (VGMHeader.GD3Offset>0) {
-          // GD3 tag exists
-          struct TGD3Header  GD3Header;
-          gzseek(fh,VGMHeader.GD3Offset+0x14,SEEK_SET);
-          i=gzread(fh,&GD3Header,sizeof(GD3Header));
-          if (
-            (i==sizeof(GD3Header)) &&
-            (GD3Header.GD3Ident == GD3IDENT) &&
-            (GD3Header.Version>=MINGD3VERSION) &&
-            ((GD3Header.Version & REQUIREDGD3MAJORVER)==REQUIREDGD3MAJORVER) &&
-            !((GD3Header.Version==0x100) && (tagindex>10))  // GD3 1.00 = 10 fields
-          ) {
-              // GD3 is acceptable version
-              wchar *GD3data,*p;
-
-              GD3data=malloc(GD3Header.Length);  // Allocate memory for string data
-              gzread(fh,GD3data,GD3Header.Length);  // Read it in
-
-              p=getGD3(tagindex,GD3data,GD3Header.Length);
-
-              // if tag is blank and an alternative language is available, try that
-              if((*p==0)&&(tagindex<=GD3_AUTHORJP)){
-                if(tagindex%2) tagindex--;
-                else tagindex++;
-                p=getGD3(tagindex,GD3data,GD3Header.Length);
-              }
-
-              // convert to ASCII/MBCS (UTF-8?)
-              if(p<GD3data+GD3Header.Length)
-                WideCharToMultiByte(CP_ACP,0,p,-1,ret,retlen,NULL,NULL);
-
-              free(GD3data);  // Free memory for string buffer
-
-              // special cases?
-              switch(tagindex) {
-              case 2:
-              case 3: // album: append " (FM)" for FM soundtracks if wanted
-                if(MLShowFM && VGMHeader.YM2413Clock) strncat(ret," (FM)",retlen-strlen(ret));
-                break;
-              case 8: // year: make it the first 4 digits
-                if(strlen(ret)>4) ret[4]=0;
-                break;
-              }
-          }
-        }
-      }
-    }
-    gzclose(fh);
+  if(stricmp(metadata,"track")==0) { // track number
+    int i=getTrackNumber(filename);
+    if(i>0) {
+      _snprintf(ret,retlen,"%d",i);
+      return 1;
+    } else return 0;
   }
+
+  // next, check if we've already looked at this file
+  if (!LastFileInfo.filename || strcmp(LastFileInfo.filename,filename)!=0)
+  {
+    LoadInfo(filename);
+    // do another check on that filename in case it failed
+    if (!LastFileInfo.filename || strcmp(LastFileInfo.filename,filename)!=0)
+      return 0;
+  }
+
+  // now start returning stuff
+
+  *ret=0;
   
-  // more special cases
-  switch(tagindex) {
-    case 11:
-      // track number
-      if(*ret==0) {
-        int i=getTrackNumber(filename);
-        if(i>0) _snprintf(ret,retlen,"%d",i);
+  if(stricmp(metadata,"artist")==0)        tagindex=GD3_AUTHOREN;   // author
+  else if(stricmp(metadata,"length")==0)   tagindex=GD3X_LENGTH;  // length /ms
+  else if(stricmp(metadata,"title")==0)    tagindex=GD3_TITLEEN;   // track title
+  else if(stricmp(metadata,"album")==0)    tagindex=GD3_GAMEEN;   // game name
+  else if(stricmp(metadata,"comment")==0)  tagindex=GD3_NOTES;  // comment
+  else if(stricmp(metadata,"year")==0)     tagindex=GD3_DATE;   // year
+  else if(stricmp(metadata,"genre")==0)    tagindex=GD3_SYSTEMEN;   // system
+
+//  if(tagindex==GD3_UNKNOWN)MessageBox(0,metadata,"Unknown",0); // debug: get metadata types
+    
+  if((MLJapanese)&&(tagindex>=GD3_TITLEEN)&&(tagindex<=GD3_AUTHOREN)) tagindex++; // Increment index for Japanese
+
+  switch (tagindex) {
+    case GD3X_LENGTH:
+      _snprintf(ret,retlen,"%d",LastFileInfo.length);
+      break;
+    case GD3_TITLEEN: case GD3_TITLEJP: case GD3_GAMEEN: case GD3_GAMEJP: case GD3_SYSTEMEN: case GD3_SYSTEMJP:
+    case GD3_AUTHOREN: case GD3_AUTHORJP: case GD3_DATE: case GD3_RIPPER: case GD3_NOTES:
+      // copy from LastFileInfo, but check for empty ones and use the alternative
+      if (
+        ( (LastFileInfo.tags[tagindex] == NULL) || (strlen(LastFileInfo.tags[tagindex]) == 0) )
+        &&( tagindex <= GD3_AUTHORJP)
+      ) {
+        // tweak index to point to alternative
+        if(tagindex%2) tagindex--;
+        else tagindex++;
       }
+      // copy
+      strncpy( ret, LastFileInfo.tags[tagindex], retlen );
+      break;
+    default:
+      // do nothing
+      return 0;
       break;
   }
 
-  //MessageBox(0,metadata,0,0);
-
-  return 1;//(*ret!='\0');
+  if ( *ret == 0 )
+    // empty buffer: we didn't have anything to add
+    return 0;
+  else
+    return 1;
 }

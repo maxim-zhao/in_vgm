@@ -1,4 +1,4 @@
-VGM input plugin 0.32
+VGM input plugin 0.33
 =====================
 
 PROBLEMS
@@ -7,19 +7,13 @@ PROBLEMS
 Here are the things that can go wrong, right at the start so you can 
 find them easily.
 
-1. Some error about "mscvr71.dll"
-2. Plugin doesn't show up in the input plugins list
-
-You need the msvcr71.dll file on your system. Download it from here:
-
-http://www.smspower.org/music/vgmtools/msvcr71.zip
-
-Put it in the same folder as winamp.exe, or in windows\system32. The
-self-installing version of the plugin includes this file.
-
-3. VGM files play too fast
+1. VGM files play too fast
 
 If you have in_gym then disable its VGM handling. It is weird.
+
+2. Anything else
+
+Please contact me!
 
 
 Introduction
@@ -55,8 +49,8 @@ The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki
 (http://www.angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. The 
 YM2612 engine is from Gens by Stephane Dallongeville 
 (http://gens.consolemul.com). The YM2151 engine is from MAME 
-(http://www.mame.net) and was added by BlackAura. It uses Zlib by 
-Jean-loup Gailly and Mark Adler.
+(http://www.mame.net) and was added by BlackAura. ZLib decompression
+is by Jean-loup Gailly and Mark Adler.
 
 
 Dialogue boxes
@@ -158,7 +152,7 @@ GD3 tags tab:
     If checked, the media library and advanced title formatting will
     use Japanese text if available, otherwise English. If unchecked,
     English text is used in preference to Japanese.
-  "Append (FM) to game name if applicable"
+  "Append (FM) to game name for YM2412"
     To make it easier to tell FM and PSG soundtracks apart, this will
     make the returned game name (given as the album name) end with
     "(FM)". Note that some emulators incorrectly specify an FM clock in
@@ -339,6 +333,21 @@ Stereo" is quite cool.
 
 History:
 ========
+
+0.33 20/11/05
+=============
+
++ Added support for YM2612 sample banks and VGM 1.50
++ Fixed some stupid old bugs with unlooped VGMs that nobody ever noticed
++ Updated ZLib to latest version
++ (Hopefully) removed dependency on MSVCRT*.DLL
++ Added file sniffer functionality so it will automagically play VGM
+  files even if you change the extension (although that's not
+  recommended)
++ Improved file info box chip usage display
++ Added tag caching for tag queries, to speed up media library tag
+  retrieval
++ Changed to NSIS installer and packed in another demo VGM
 
 0.32 30/10/05
 =============

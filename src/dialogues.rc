@@ -216,8 +216,8 @@ BEGIN
     GROUPBOX        "Data formatting",IDC_STATIC,4,4,157,35
     CONTROL         "Prefer &Japanese text",cbMLJapanese,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,9,13,113,12
-    CONTROL         "Append (&FM) to game name if applicable",cbMLShowFM,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,24,145,12
+    CONTROL         "Append (&FM) to game name for YM2413",cbMLShowFM,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,24,145,12
     GROUPBOX        "File type",IDC_STATIC,4,39,157,49
     LTEXT           "Return file &type ID:",IDC_STATIC,9,48,67,12,
                     SS_CENTERIMAGE
