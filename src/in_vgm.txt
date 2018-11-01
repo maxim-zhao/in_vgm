@@ -1,4 +1,4 @@
-VGM input plugin 0.30
+VGM input plugin 0.31
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard
@@ -7,12 +7,13 @@ originated by Dave, allowing various systems' games' music to be stored.
 See http://www.smspower.org/music for more information, and to download
 VGM music files.
 
+Open this URL in Winamp to hear a demo:
+
+http://www.smspower.org/music/vgm/demo/Golvellius.m3u
+
 If you got the self-installing EXE version, just restart Winamp.
 
 To use: put in_vgm in Winamp's plugins\ folder, and restart Winamp.
-
-If you have Windows XP, put winamp.exe.manifest in Winamp's folder to
-make it use XP's Visual Styles.
 
 Load .vgm or .vgz files in Winamp; go to the "File types" preferences
 page to associate these extensions:
@@ -156,7 +157,9 @@ Title/GD3 tab:
   "Title formatting"
     Enter text to control what tile Winamp shows for the file. Enter
     special codes like "%t" to insert various GD3 entries. If the file
-    has no GD3 tag then the filename will be used as the title.
+    has no GD3 tag then the filename will be used as the title. Winamp
+    5's Advanced Title Formatting bypasses this, instead using data from
+    the Media Library.
 
   GD3/HTML display:
   "Use MiniBrowser to display HTML"
@@ -170,7 +173,42 @@ Title/GD3 tab:
   "Open MiniBrowser if it is closed" 
     If checked, when auto-displaying GD3 tags, the MiniBrowser will be
     opened if it is closed.
-
+    
+Media Library tab:
+  Data formatting:
+    "Prefer Japanese text"
+      If checked, the media library and advanced title formatting will
+      use Japanese text if available, otherwise English. If unchecked,
+      English text is used in preference to Japanese.
+      
+    "Append (FM) to game name if applicable"
+      To make it easier to tell FM and PSG soundtracks apart, this
+      will make the returned game name (given as the album name)
+      end with "(FM)". Note that some emulators incorrectly specify
+      an FM clock in the VGM file, causing this to be displayed
+      wrongly.
+      
+  File Type:
+    "Return file type ID"
+      Winamp's Media Library comes by default with filtered views for
+      "Audio" and "Video", as well as other views for htings like
+      recently played files. If you right-click on the tree you can edit
+      them and add new views for more advanced filters.
+      
+      If, like me, you don't want VGMs to play mixed in with your
+      regular MP3s, you can use this to make it very easy to filter
+      VGMs out of the "Audio" view and into another. Here's the procedure:
+      1. Change the number to another value (I use 262144)
+      2. Add a new view to the Media Library
+      3. On the advanced tab, change the query to TYPE=262144 (or whatever
+         number you chose)
+      4. Refresh your Media Library from the Library button.
+      
+      Note that Winamp does not define meanings for values other than
+      0 (audio) and 1 (video). It might in later versions, so try to use
+      a value that is unlikely to be used in the future (2 is more
+      likely to be used than 262144).
+      
 Note that cancelling this dialogue box does *not* restore the previous
 settings.
 
@@ -242,6 +280,13 @@ Stereo" is quite cool.
 
 History:
 ========
+
+0.31 12/12/04
+=============
+
++ Added Media Library extended title support and lots of associated
+  options
++ And various other stuff too
 
 0.30 28/5/03
 ============

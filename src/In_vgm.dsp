@@ -43,8 +43,8 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /YX /c
-# ADD CPP /nologo /MD /W3 /GX /O2 /Op /Ob2 /I ".\mamesrc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /FD /c
-# SUBTRACT CPP /YX
+# ADD CPP /MD /W3 /GX /O2 /Op /Ob2 /I ".\mamesrc" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /FR /FD /c
+# SUBTRACT CPP /nologo /YX
 # ADD BASE MTL /nologo /D "NDEBUG" /win32
 # ADD MTL /nologo /D "NDEBUG" /mktyplib203 /win32
 # ADD BASE RSC /l 0x409 /d "NDEBUG"
@@ -152,6 +152,10 @@ SOURCE=.\out.h
 # Begin Group "Resource Files"
 
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe"
+# Begin Source File
+
+SOURCE=.\logo.bmp
+# End Source File
 # Begin Source File
 
 SOURCE=.\mainicon.ico

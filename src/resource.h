@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
+// Microsoft Visual C++ generated include file.
 // Used by dialogues.rc
 //
 #define ebLoopCount                     103
@@ -8,12 +8,14 @@
 #define cbTone3                         107
 #define cbTone4                         108
 #define ebTrackTitle                    110
+#define DlgCfgML                        111
 #define DlgCfgMuting                    112
 #define ebPlaybackRate                  113
 #define rbRateOriginal                  114
 #define DlgCfgPlayback                  114
 #define rbRate50                        115
 #define DlgCfgGD3                       115
+#define bmLogo                          115
 #define rbRate60                        116
 #define rbRateOther                     117
 #define ebTitle                         200
@@ -74,6 +76,10 @@
 #define ebPauseLength                   1050
 #define ebFadeOutLength                 1051
 #define cbMutePersistent                1054
+#define cbMLJapanese                    1055
+#define cbMLShowFM                      1056
+#define IDC_EDIT1                       1057
+#define ebMLType                        1057
 
 // Next default values for new objects
 // 
@@ -81,9 +87,9 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        111
+#define _APS_NEXT_RESOURCE_VALUE        116
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1055
+#define _APS_NEXT_CONTROL_VALUE         1058
 #define _APS_NEXT_SYMED_VALUE           111
 #endif
 #endif

@@ -1,4 +1,4 @@
-//Microsoft Developer Studio generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -23,11 +23,65 @@ LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+MAINICON                ICON                    "mainicon.ico"
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+bmLogo                  BITMAP                  "logo.bmp"
+#endif    // Neutral resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////////////////////////////////////////////
+// Neutral (Default) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUD)
+#ifdef _WIN32
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+#pragma code_page(1252)
+#endif //_WIN32
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // Dialog
 //
 
-DOWNLOADDIALOGUE DIALOG DISCARDABLE  28, 10, 99, 34
-STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION
+DOWNLOADDIALOGUE DIALOG  28, 10, 99, 34
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION
 CAPTION "Downloading file..."
 FONT 8, "Verdana"
 BEGIN
@@ -35,67 +89,70 @@ BEGIN
                     "Static",SS_LEFTNOWORDWRAP | SS_SUNKEN,2,2,95,30
 END
 
-CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 211, 204
-STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CONFIGDIALOGUE DIALOG  0, 0, 211, 204
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | 
+    WS_SYSMENU
 CAPTION "VGM plugin configuration"
-FONT 8, "Verdana"
+FONT 8, "MS Shell Dlg"
 BEGIN
-    DEFPUSHBUTTON   "&OK",IDOK,155,187,52,14
-    ICON            "MAINICON",-1,2,184,20,20
+    DEFPUSHBUTTON   "OK",IDOK,155,187,52,14
     PUSHBUTTON      "Help",btnReadMe,100,187,52,14
     CONTROL         "Tab1",tcMain,"SysTabControl32",WS_TABSTOP,2,4,205,179
 END
 
-FILEINFODIALOGUE DIALOG DISCARDABLE  0, 0, 298, 145
-STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+FILEINFODIALOGUE DIALOGEX 0, 0, 331, 143
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | 
+    WS_CAPTION | WS_SYSMENU
 CAPTION "VGM file & GD3 tag information"
-FONT 8, "Verdana"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "&OK",IDOK,244,129,52,14
-    GROUPBOX        "Track",308,2,0,145,39
+    DEFPUSHBUTTON   "OK",IDOK,277,127,52,14
+    GROUPBOX        "Track",308,2,0,173,40
     LTEXT           "&Title",300,7,10,32,12,SS_CENTERIMAGE | NOT WS_GROUP
-    EDITTEXT        ebTitle,40,10,102,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        ebTitle,40,10,130,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "&Author",301,7,23,32,12,SS_CENTERIMAGE | NOT WS_GROUP
-    EDITTEXT        ebAuthor,40,23,102,12,ES_AUTOHSCROLL | ES_READONLY
-    GROUPBOX        "Game",309,2,40,145,52
+    EDITTEXT        ebAuthor,40,23,130,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Game",309,2,40,173,52
     LTEXT           "Na&me",302,7,49,32,12,SS_CENTERIMAGE | NOT WS_GROUP
-    EDITTEXT        ebName,40,49,102,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        ebName,40,49,130,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "&System",303,7,62,32,12,SS_CENTERIMAGE | NOT WS_GROUP
-    EDITTEXT        ebSystem,40,62,102,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        ebSystem,40,62,130,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "&Date",304,7,75,32,12,SS_CENTERIMAGE | NOT WS_GROUP
-    EDITTEXT        ebDate,40,75,102,12,ES_AUTOHSCROLL | ES_READONLY
-    GROUPBOX        "Language",IDC_STATIC,2,93,52,34
+    EDITTEXT        ebDate,40,75,130,12,ES_AUTOHSCROLL | ES_READONLY
+    GROUPBOX        "Language",IDC_STATIC,123,92,52,33
     CONTROL         "&English",rbEnglish,"Button",BS_AUTORADIOBUTTON | 
-                    WS_TABSTOP,7,104,39,8
+                    WS_TABSTOP,127,103,39,8
     CONTROL         "&Japanese",rbJapanese,"Button",BS_AUTORADIOBUTTON | 
-                    WS_TABSTOP,7,114,43,8
-    GROUPBOX        "VGM file",IDC_STATIC,151,0,145,126
-    LTEXT           "&Filename",IDC_STATIC,155,10,32,12,SS_CENTERIMAGE | NOT 
+                    WS_TABSTOP,127,113,43,8
+    GROUPBOX        "VGM file",IDC_STATIC,179,0,150,125
+    LTEXT           "&Filename",IDC_STATIC,185,10,39,12,SS_CENTERIMAGE | NOT 
                     WS_GROUP
-    EDITTEXT        ebFilename,189,10,102,12,ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        ebFilename,224,10,102,12,ES_AUTOHSCROLL | ES_READONLY
     CONTROL         "&Creator",305,"Static",SS_LEFTNOWORDWRAP | 
-                    SS_CENTERIMAGE,155,23,32,12
-    EDITTEXT        ebCreator,189,23,102,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "&Version",306,155,36,32,12,SS_CENTERIMAGE
-    EDITTEXT        ebVersion,189,36,23,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "Audio",307,217,36,19,12,SS_CENTERIMAGE
-    CHECKBOX        "PSG",rbPSG,239,36,28,12,NOT WS_TABSTOP
-    CHECKBOX        "FM",rbFM,270,36,22,12,NOT WS_TABSTOP
-    LTEXT           "Si&ze",IDC_STATIC,155,49,32,12,SS_CENTERIMAGE
-    EDITTEXT        ebSize,189,49,102,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "&Length",IDC_STATIC,155,62,32,12,SS_CENTERIMAGE
-    EDITTEXT        ebLength,189,62,102,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "&Notes:",IDC_STATIC,155,74,32,8
-    EDITTEXT        ebNotes,155,83,137,38,ES_MULTILINE | ES_READONLY | 
+                    SS_CENTERIMAGE,185,23,39,12
+    EDITTEXT        ebCreator,224,23,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Version",306,185,37,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebVersion,224,36,23,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "Audio",307,250,36,19,12,SS_CENTERIMAGE
+    CHECKBOX        "PSG",rbPSG,272,36,28,12,NOT WS_TABSTOP
+    CHECKBOX        "FM",rbFM,303,36,22,12,NOT WS_TABSTOP
+    LTEXT           "Si&ze",IDC_STATIC,185,49,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebSize,224,49,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Length",IDC_STATIC,185,62,39,12,SS_CENTERIMAGE
+    EDITTEXT        ebLength,224,62,102,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "&Notes:",IDC_STATIC,185,74,39,8
+    EDITTEXT        ebNotes,185,83,137,38,ES_MULTILINE | ES_READONLY | 
                     WS_VSCROLL
-    PUSHBUTTON      "smspower.org/music",btnURL,62,110,85,14
-    PUSHBUTTON      "Configure &plugin...",btnConfigure,62,126,85,14
-    PUSHBUTTON      "View GD3 in &browser",btnUnicodeText,62,95,85,14
+    PUSHBUTTON      "Configure &plugin...",btnConfigure,195,127,70,14
+    PUSHBUTTON      "View in &browser",btnUnicodeText,123,127,70,14
+    CONTROL         115,IDC_STATIC,"Static",SS_BITMAP | SS_REALSIZEIMAGE,2,
+                    95,119,46
 END
 
-DlgCfgMuting DIALOG DISCARDABLE  0, 0, 200, 160
-STYLE DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
-FONT 8, "Verdana"
+DlgCfgMuting DIALOG  0, 0, 200, 160
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | 
+    WS_VISIBLE
+FONT 8, "MS Shell Dlg"
 BEGIN
     CONTROL         "&Immediate update (jerky)",cbMuteImmediate,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,4,4,121,10
@@ -161,8 +218,9 @@ BEGIN
 END
 
 DlgCfgPlayback DIALOGEX 0, 0, 200, 160
-STYLE DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
-FONT 8, "Verdana"
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | 
+    WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     GROUPBOX        "Looping",IDC_STATIC,4,4,119,47
     LTEXT           "&Repeat looped section",IDC_STATIC,8,13,72,12,
@@ -213,26 +271,46 @@ BEGIN
                     81,127,8
 END
 
-DlgCfgGD3 DIALOG DISCARDABLE  0, 0, 200, 160
-STYLE DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
-FONT 8, "Verdana"
+DlgCfgGD3 DIALOGEX 0, 0, 200, 160
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
 BEGIN
-    GROUPBOX        "Title &formatting",IDC_STATIC,4,4,192,69
+    GROUPBOX        "Title &formatting (old Winamp versions)",IDC_STATIC,4,4,
+                    192,85
     EDITTEXT        ebTrackTitle,8,15,92,12,ES_AUTOHSCROLL
     LTEXT           "Default:  ""%t (%g) - %a""",IDC_STATIC,107,15,84,12,
                     SS_CENTERIMAGE
-    LTEXT           "%t\tTrack title*\t%a\tTrack author*\n%g\tGame name*\t%d\tGame release date\n%s\tSystem name*\t%c\tFile creator\n\n* use %?j for Japanese text if available",
-                    IDC_STATIC,8,29,182,43,NOT WS_GROUP
-    GROUPBOX        "GD3/HTML display",IDC_STATIC,4,75,192,66
+    LTEXT           "%t\tTrack title*\t%a\tTrack author*\n%g\tGame name*\t%d\tGame release date\n%s\tSystem name*\t%c\tFile creator\n* use %?j for Japanese text if available\n\nNote: Winamp 5's ""Advanced Title Formatting"" will override this.",
+                    IDC_STATIC,8,29,182,58,NOT WS_GROUP
+    GROUPBOX        "GD3/HTML display",IDC_STATIC,4,90,192,66
     CONTROL         "Use &MiniBrowser to display HTML\n(URL links and GD3 tags)",
                     cbUseMB,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
-                    WS_TABSTOP,8,84,121,18
+                    WS_TABSTOP,8,98,121,18
     CONTROL         "Auto-display &GD3 tags as \nHTML in MiniBrowser",
                     cbAutoMB,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
-                    WS_TABSTOP,8,102,122,18
+                    WS_TABSTOP,8,117,122,18
     CONTROL         "Open Mini&Browser if it is closed\n(for auto-display only)",
                     cbForceMBOpen,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
-                    WS_TABSTOP,8,120,122,18
+                    WS_TABSTOP,8,135,122,18
+END
+
+DlgCfgML DIALOGEX 0, 0, 200, 160
+STYLE DS_SETFONT | DS_SETFOREGROUND | DS_3DLOOK | DS_FIXEDSYS | DS_CONTROL | 
+    WS_CHILD | WS_VISIBLE
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    GROUPBOX        "Data formatting",IDC_STATIC,4,4,192,41
+    CONTROL         "Prefer &Japanese text",cbMLJapanese,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,15,113,12
+    CONTROL         "Append (&FM) to game name if applicable",cbMLShowFM,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,27,165,12
+    GROUPBOX        "File type",IDC_STATIC,4,48,192,43
+    LTEXT           "Return file type &ID:",IDC_STATIC,9,56,67,12,
+                    SS_CENTERIMAGE
+    EDITTEXT        ebMLType,78,56,74,12,ES_AUTOHSCROLL | ES_NUMBER
+    CTEXT           "0 = audio, 1 = video, other values are undefined.\nSee the documentation for the use of this.",
+                    IDC_STATIC,9,70,180,16
 END
 
 
@@ -242,7 +320,7 @@ END
 //
 
 #ifdef APSTUDIO_INVOKED
-GUIDELINES DESIGNINFO DISCARDABLE 
+GUIDELINES DESIGNINFO 
 BEGIN
     "DOWNLOADDIALOGUE", DIALOG
     BEGIN
@@ -256,19 +334,21 @@ BEGIN
     BEGIN
         LEFTMARGIN, 2
         RIGHTMARGIN, 207
-        BOTTOMMARGIN, 198
+        BOTTOMMARGIN, 201
     END
 
     "FILEINFODIALOGUE", DIALOG
     BEGIN
         LEFTMARGIN, 2
-        RIGHTMARGIN, 296
+        RIGHTMARGIN, 329
         VERTGUIDE, 7
         VERTGUIDE, 40
-        VERTGUIDE, 147
-        VERTGUIDE, 155
-        VERTGUIDE, 189
-        BOTTOMMARGIN, 143
+        VERTGUIDE, 170
+        VERTGUIDE, 175
+        VERTGUIDE, 179
+        VERTGUIDE, 185
+        VERTGUIDE, 224
+        BOTTOMMARGIN, 141
     END
 
     DlgCfgMuting, DIALOG
@@ -294,45 +374,19 @@ BEGIN
         TOPMARGIN, 4
         BOTTOMMARGIN, 156
     END
+
+    DlgCfgML, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 196
+        VERTGUIDE, 9
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 156
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-MAINICON                ICON    DISCARDABLE     "mainicon.ico"
-
-#ifdef APSTUDIO_INVOKED
-/////////////////////////////////////////////////////////////////////////////
-//
-// TEXTINCLUDE
-//
-
-1 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "resource.h\0"
-END
-
-2 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "#include ""afxres.h""\r\n"
-    "\0"
-END
-
-3 TEXTINCLUDE DISCARDABLE 
-BEGIN
-    "\r\n"
-    "\0"
-END
-
-#endif    // APSTUDIO_INVOKED
-
-#endif    // Neutral resources
+#endif    // Neutral (Default) resources
 /////////////////////////////////////////////////////////////////////////////
 
 

@@ -1,4 +1,4 @@
-/* 
+/*
 
   SN76489 emulation
   by Maxim in 2001 and 2002
@@ -138,7 +138,7 @@ void SN76489_GetValues(int *left,int *right)
 
 	for (i=0;i<=2;++i)
 		if (IntermediatePos[i]!=LONG_MIN)
-			Channels[i]=(SN76489_Mute >> i & 0x1)*PSGVolumeValues[SN76489_VolumeArray][Registers[2*i+1]]*IntermediatePos[i]/65536;
+			Channels[i]=(short)((SN76489_Mute >> i & 0x1)*PSGVolumeValues[SN76489_VolumeArray][Registers[2*i+1]]*IntermediatePos[i]/65536);
 		else
 			Channels[i]=(SN76489_Mute >> i & 0x1)*PSGVolumeValues[SN76489_VolumeArray][Registers[2*i+1]]*ToneFreqPos[i];
 
@@ -188,6 +188,67 @@ void SN76489_GetValues(int *left,int *right)
 			ToneFreqVals[i]+=Registers[i*2]*(NumClocksForSample/Registers[i*2]+1);
 		} else IntermediatePos[i]=LONG_MIN;
 	};
+/*
+The player works by calculating the number of PSG clocks per sample (dClock).
+For each sample, it renders an integer number of PSG clocks (NumClocksForSample)
+and any fraction is saved (Clock) and added into the next sample's number of
+clocks. This "saved" fraction is just making sure that the PSG clock flips the
+right number of times since for some samples it has to flip more times to stay
+at the right speed. The rendered sample still reflects the whole period.
+
+Number of PSG clocks for this sample = dClock (float)
+Integer part of that = NumClocksForSample
+Fractional part of that = Clock
+
+ToneFreqVals[i] = underflowed sample counter for channel i, ie. a negative integer
+
+|   |   |   |   |   |   |   |   | PSG clocks
+  |                            |  Sample boundaries
+  .                            .
+----------------+              .
+  .             |              .  Waveform
+  .             |              .
+  .             +----------------
+  .             .              .
+  |   |   |   | . |   |   |   ||  Re-aligned PSG clocks
+  <------ A ---->             ..
+  .           . <----- B ------>
+  .           .               ..
+  <---- NumClocksForSample --->.
+  .           .               >< Clock
+              <------ D ------>
+
+If the first half-wave has sign S, the average value over the sample is:
+   A*S+B*(-S)   (A-B)*S
+   ---------- = -------
+      A+B         A+B
+
+A+B = NumClocksForSample+Clock (integer + fraction of aligned PSG clocks)
+
+The half-wave counter will have just overflowed so that
+
+D = -ToneFreqVals[i]
+
+A = NumClocksForSample-D
+  = NumClocksForSample+ToneFreqVals[i]
+B = NumClocksForSample+Clock-A
+  = NumClocksForSample+Clock-(NumClocksForSample+ToneFreqVals[i])
+  = Clock-ToneFreqVals[i]
+S = ToneFreqPos[i]
+
+Thus,
+                (NumClocksForSample+ToneFreqVals[i]) - (Clock-ToneFreqVals[i]) * ToneFreqPos[i]
+Average value = -------------------------------------------------------------------------------
+                                           NumClocksForSample+Clock
+
+              = ((NumClocksForSample-Clock+2*ToneFreqVals[i])*ToneFreqPos[i])/(float)(NumClocksForSample+Clock)
+
+However, as a small and probably useless optimisation, I try to avoid storing
+this in floating point by using fixed point; I do the calculation (I expect it
+is performed in double precision), multiply the result by 64K and round to an
+integer. When using this "intermediate position" value, the resulting sample
+is divided by 64K to get back to the correct value (ie. I avoid a floating-
+*/
 
 	// Noise channel
 	if (ToneFreqVals[3]<=0) {	// If it gets below 0...

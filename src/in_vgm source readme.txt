@@ -1,7 +1,7 @@
 in_vgm source files
 ===================
 
-Made with VC6. Please let me know if I've missed out any files.
+Made with VC7. Please let me know if I've missed out any files.
 Uses ZLib (not included), EMU2413 (included), a modified version
 of some MAME FM cores (included) and Gens' YM2612 core (included).
 
