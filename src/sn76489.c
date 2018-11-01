@@ -33,6 +33,7 @@ unsigned short int  ToneFreqs[4];		// Frequency register values (total)
   signed       char ToneFreqPos[4];		// Frequency channel flip-flops
   signed short int  Channels[4];		// Value of each channel, before stereo is applied
 unsigned       char PSGVolumes[4];		// Volume value (0..15)
+  signed       int  IntermediatePos[4]; // intermediate values used at boundaried between + and -
 
 unsigned long int NoiseShiftRegister,NoiseFeedback;
 
@@ -52,8 +53,6 @@ void SN76489_Init(const unsigned long PSGClockValue)
 	dClock=(float)PSGClockValue/16/44100;
 	PSGFrequencyLowBits=0;
 	Channel=4;
-	// Set all channels on
-	PSGMute=0xf;
 	PSGStereo=0xff;
 	for (i=0;i<=3;i++) {
 		// Set volumes to 0
@@ -64,6 +63,7 @@ void SN76489_Init(const unsigned long PSGClockValue)
 		ToneFreqVals[i]=0;
 		// Set flip-flops to 0
 		ToneFreqPos[i]=0;
+		IntermediatePos[i]=0;
 	};
 	// But not this one! It's not audible anyway, plus starting it at 0 messes up other stuff 
 	ToneFreqPos[3]=1;
@@ -84,6 +84,7 @@ void SN76489_Write(const unsigned char data)
 	case 0x10:	// second frequency byte
 		if (!(Channel & 4)) {
 		    ToneFreqs[Channel]=(data & 0x3F) << 4 | PSGFrequencyLowBits; // Set frequency register
+			if (ToneFreqs[Channel]<4) ToneFreqs[Channel]=0;
 			if (!ToneFreqPos[Channel]) ToneFreqPos[Channel]=1; // need the if, for when writes happen when pos=-1 (want to keep that)
 		};
 		break;
@@ -119,7 +120,11 @@ void SN76489_WriteToBuffer(short int *buffer, const int position)
 	if (!Active) return;
 
 	for (i=0;i<=2;++i)
-		Channels[i]=(PSGMute >> i & 0x1)*PSGVolumeValues[PSGVolumes[i]]*ToneFreqPos[i];
+		if (PSGOverSample & IntermediatePos[i])
+			Channels[i]=(PSGMute >> i & 0x1)*PSGVolumeValues[PSGVolumes[i]]*ToneFreqPos[i]*IntermediatePos[i]/256;
+		else
+			Channels[i]=(PSGMute >> i & 0x1)*PSGVolumeValues[PSGVolumes[i]]*ToneFreqPos[i];
+
 	Channels[3]=(short)((PSGMute >> 3 & 0x1)*PSGVolumeValues[PSGVolumes[3]]*(NoiseShiftRegister & 0x1));
 
 	buffer[2*position  ]=0;
@@ -148,9 +153,11 @@ void SN76489_WriteToBuffer(short int *buffer, const int position)
 	// Tone channels:
 	for (i=0;i<=2;++i) {
 		if (ToneFreqVals[i]<0) {	// If it gets below 0...
+			// Calculate how much of the sample is + and how much is -
+			if (PSGOverSample) IntermediatePos[i]=(NumClocksForSample+2*ToneFreqVals[i])*256/NumClocksForSample;
 			ToneFreqPos[i]=-ToneFreqPos[i];	// Flip the flip-flop
 			if (ToneFreqs[i]>0) do ToneFreqVals[i]+=ToneFreqs[i]; while (ToneFreqVals[i]<0);	// ...and increment it until it gets above 0 again
-		};
+		} else IntermediatePos[i]=0;
 	};
 
 	// Noise channel

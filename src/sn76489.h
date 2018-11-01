@@ -11,6 +11,7 @@ void SN76489_GGStereoWrite(const unsigned char data);
 void SN76489_WriteToBuffer(short int *buffer, const int position);
 
 int PSGMute; // expose this for inspection/modification for channel muting
+int PSGOverSample; // expose this too
 
 #ifdef __cplusplus
 }

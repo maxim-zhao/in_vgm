@@ -82,12 +82,12 @@ BEGIN
     PUSHBUTTON      "View GD3 in &browser",btnUnicodeText,62,95,85,14
 END
 
-CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 231, 212
+CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 229, 213
 STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "VGM plugin configuration"
 FONT 8, "Verdana"
 BEGIN
-    DEFPUSHBUTTON   "&OK",IDOK,177,196,52,14
+    DEFPUSHBUTTON   "&OK",IDOK,175,197,52,14
     GROUPBOX        "Looping",IDC_STATIC,2,0,131,25
     LTEXT           "&Repeat looped section",IDC_STATIC,6,11,73,8,NOT 
                     WS_GROUP
@@ -145,7 +145,7 @@ BEGIN
                     WS_TABSTOP,75,141,51,8
     CONTROL         "Bass drum",cbFM14,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
                     75,151,51,8
-    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,168,131,42
+    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,169,131,42
     CONTROL         "Use &MiniBrowser to display HTML",cbUseMB,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,6,179,122,8
     CONTROL         "Auto-display &GD3 in MB/browser",cbAutoMB,"Button",
@@ -167,10 +167,13 @@ BEGIN
     GROUPBOX        "Track title &display",IDC_STATIC,136,75,91,92
     EDITTEXT        ebTrackTitle,141,86,81,12,ES_AUTOHSCROLL
     LTEXT           "%t = Track title*\n%a = Track author*\n%g = Game name*\n%d = Game release date\n%s = System name*\n%c = File creator\n* use %?j for\n   Japanese text",
-                    IDC_STATIC,141,99,84,64,NOT WS_GROUP
-    ICON            "MAINICON",IDC_STATIC,141,190,20,20
+                    IDC_STATIC,141,99,83,64,NOT WS_GROUP
+    ICON            "MAINICON",IDC_STATIC,141,192,20,20
     CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,6,199,122,8
+    GROUPBOX        "Miscellaneous",IDC_STATIC,136,169,91,22
+    CONTROL         "PSG oversampling",cbPSGOverSample,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,141,179,76,10
 END
 
 
@@ -205,14 +208,14 @@ BEGIN
     "CONFIGDIALOGUE", DIALOG
     BEGIN
         LEFTMARGIN, 2
-        RIGHTMARGIN, 229
+        RIGHTMARGIN, 227
         VERTGUIDE, 6
         VERTGUIDE, 11
         VERTGUIDE, 75
         VERTGUIDE, 133
         VERTGUIDE, 136
         VERTGUIDE, 141
-        BOTTOMMARGIN, 210
+        BOTTOMMARGIN, 211
     END
 END
 #endif    // APSTUDIO_INVOKED

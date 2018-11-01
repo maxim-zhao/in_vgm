@@ -7,12 +7,16 @@
 
 #define FMPERCENT 60
 
-#define PLUGINNAME "VGM input plugin v0.22"
+#define PLUGINNAME "VGM input plugin v0.23"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
 #define MINGD3VERSION 0x100
 #define REQUIREDGD3MAJORVER 0x100
+// PSG has 4 channels, 2^4-1=0xf
+#define PSGMUTE_ALLON 0xf
+// YM2413 has 14 (9 + 5 percussion), BUT it uses 1=mute, 0=on
+#define YM2413MUTE_ALLON 0
 
 #include <windows.h>
 #include <stdio.h>
@@ -46,7 +50,7 @@ BOOL WINAPI _DllMainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lp
 #define SAMPLERATE 44100// Sampling rate
 
 In_Module mod;			// the output module (declared near the bottom of this file)
-char lastfn[MAX_PATH];	// currently playing file (used for getting info on the current file)
+char lastfn[MAX_PATH]="";	// currently playing file (used for getting info on the current file)
 int paused;				// are we paused?
 char TextFileName[MAX_PATH];	// holds a filename for the Unicode text file
 
@@ -91,13 +95,15 @@ int
 	NumLoopsDone,	// how many loops we've played
 	LoopLengthInms,	// length of looped section in ms
 	LoopOffset,		// File offset of looped data start
-	PSGClock,		// SN76489 clock rate
-	FMClock,		// YM2413 (and other) clock rate
+	PSGClock=1,		// SN76489 clock rate
+	FMClock=1,		// YM2413 (and other) clock rate
 	SeekToSampleNumber,	// For seeking
 	FileInfoJapanese,	// Whether to show Japanese in the info dialogue
 	UseMB,			// Whether to open HTML in the MB
 	AutoMB,			// Whether to automatically show HTML in MB
 	ForceMBOpen;	// Whether to force the MB to open if closed when doing AutoMB
+long int 
+	FMChannels=YM2413MUTE_ALLON;		// backup when stopped. PSG does it itself.
 char
 	TrackTitleFormat[100],			// Track title formatting
 	CurrentURLFilename[MAX_PATH],	// Filename current URL has been saved to
@@ -276,7 +282,6 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				EnableWindow(GetDlgItem(DlgWin,gbPSG),FALSE);
 			};
 			if (FMClock) { // Check FM channel checkboxes
-				long int FMChannels=OPLL_toggleMask(opll,0);
 				for (i=0;i<15;i++) CheckDlgButton(DlgWin,cbFM1+i,!((FMChannels & (1<<i))>0));
 				CheckDlgButton(DlgWin,cbFMToneAll,((FMChannels&0x1ff )==0));
 				CheckDlgButton(DlgWin,cbFMPercAll,((FMChannels&0x3e00)==0));
@@ -314,9 +319,10 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			} else {
 				SetDlgItemText(DlgWin,ebPlaybackRate,"60");
 			};
-			CheckDlgButton(DlgWin,cbUseMB      ,UseMB);
-			CheckDlgButton(DlgWin,cbAutoMB     ,AutoMB);
-			CheckDlgButton(DlgWin,cbForceMBOpen,ForceMBOpen);
+			CheckDlgButton(DlgWin,cbUseMB        ,UseMB);
+			CheckDlgButton(DlgWin,cbAutoMB       ,AutoMB);
+			CheckDlgButton(DlgWin,cbForceMBOpen  ,ForceMBOpen);
+			CheckDlgButton(DlgWin,cbPSGOverSample,PSGOverSample);
 			EnableWindow(GetDlgItem(DlgWin,cbAutoMB     ),UseMB);
 			EnableWindow(GetDlgItem(DlgWin,cbForceMBOpen),UseMB & AutoMB);
 
@@ -368,8 +374,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				case cbFM5:		case cbFM6:		case cbFM7:		case cbFM8:
 				case cbFM9:		case cbFM10:	case cbFM11:	case cbFM12:
 				case cbFM13:	case cbFM14: {
-					unsigned long int FMChannels=0;
 					int i;
+					FMChannels=0;
 					for (i=0;i<15;i++) FMChannels|=(!IsDlgButtonChecked(DlgWin,cbFM1+i))<<i;
 					OPLL_setMask(opll,FMChannels);
 					CheckDlgButton(DlgWin,cbFMToneAll,((FMChannels&0x1ff )==0));
@@ -408,6 +414,11 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					break;
 				case cbForceMBOpen:
 					ForceMBOpen=IsDlgButtonChecked(DlgWin,cbForceMBOpen);
+					break;
+				case cbPSGOverSample:
+					PSGOverSample=IsDlgButtonChecked(DlgWin,cbPSGOverSample);
+					break;
+
             };
             break ;
     }
@@ -461,8 +472,11 @@ void init() {
 	UseMB           =GetPrivateProfileInt(INISECTION,"Use Minibrowser"     ,1,INIFileName);
 	AutoMB          =GetPrivateProfileInt(INISECTION,"Auto-show HTML"      ,0,INIFileName);
 	ForceMBOpen     =GetPrivateProfileInt(INISECTION,"Force MB open"       ,0,INIFileName);
+	PSGOverSample   =GetPrivateProfileInt(INISECTION,"PSG oversampling"    ,0,INIFileName);
 
 	GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
+
+	PSGMute=0xf;	// important
 };
 
 //-----------------------------------------------------------------
@@ -484,6 +498,7 @@ void quit() {
 	WritePrivateProfileString(INISECTION,"Use Minibrowser"     ,itoa(UseMB           ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Auto-show HTML"      ,itoa(AutoMB          ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Force MB open"       ,itoa(ForceMBOpen     ,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"PSG oversampling"    ,itoa(PSGOverSample   ,tempstr,10),INIFileName);
 
 	DeleteFile(TextFileName);
 };
@@ -576,6 +591,12 @@ int play(char *fn)
 
 	};
 
+	if ((*lastfn) && (strcmp(fn,lastfn)!=0)) {
+		// If file has changed, reset channel muting
+		PSGMute=PSGMUTE_ALLON;
+		FMChannels=YM2413MUTE_ALLON;
+	};
+
 	strcpy(lastfn,fn);
 	
 	InputFile=gzopen(fn,"rb");	// Open file - read, binary
@@ -586,7 +607,7 @@ int play(char *fn)
 
 	// Get file size for bitrate calculations 
 	f=CreateFile(fn,GENERIC_READ,FILE_SHARE_READ,0,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,NULL);
-	FileSize=GetFileSize(f,&FileSize);
+	FileSize=GetFileSize(f,NULL);
 	CloseHandle(f);
 
 	// Read header
@@ -686,6 +707,7 @@ int play(char *fn)
 		opll = OPLL_new();
 		OPLL_reset(opll);
 		OPLL_reset_patch(opll,0);
+		OPLL_setMask(opll,FMChannels);
 	};
 
 	// Start up SN76489
@@ -936,10 +958,8 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
 
 							for (i=0;i<11;++i) {
 								// Get next string and move the pointer to the next one
-//								iconv(
-
-
 								WideCharToMultiByte(CP_ACP,0,GD3string,-1,GD3Strings[i],256,NULL,NULL);
+//								wcstombs(GD3Strings[i],GD3string,256);
 								GD3string+=wcslen(GD3string)+1;
 							};
 

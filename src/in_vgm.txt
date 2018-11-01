@@ -1,4 +1,4 @@
-VGM input plugin 0.22
+VGM input plugin 0.23
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
@@ -20,7 +20,7 @@ Actually asked questions
 > doesnt the winamp show vgms as associted files? i always have to select .vgm 
 > .vgz from the drop down menu.
 
-This is a bug in Winamp. Look at any listed type with more than one extension, for example the MPEG audio plugin (*.mp3;*.mp2;*.mp1). Now see if it'll list all three of those file types - it won't, until you choose it from the list. However, it will list MP3s as they're first in the list; so, I've put VGZ first in my list.
+This is a bug in old versions of Winamp, fixed in version 2.77. If your Winamp is older you should update.
 
 > FM music is not based on SINE waves, is it?!
 
@@ -78,6 +78,13 @@ I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is qui
 
 History:
 ========
+
+0.23 17/3/02
+============
+
++ Added PSG oversampling, hoping to reduce aliasing effects but it doesn't.
++ Improved channel selection, it now remembers it if you stop and re-play a track.
++ Released early as I had broken the self-installer last time
 
 0.22 12/2/02
 ============
