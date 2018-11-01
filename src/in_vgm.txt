@@ -1,4 +1,4 @@
-VGM input plugin 0.26
+VGM input plugin 0.27
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
@@ -68,6 +68,14 @@ I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is qui
 
 History:
 ========
+
+0.27 1/5/02
+===========
+
++ Fixed a bug with invalid GD3s
++ Updated to YM2413 0.55, which included a higher quality mode (12% higher sampling rate plus conversion). Use "High quality YM2413" checkbox to control it.
++ Modified PSG core to produce output similar to FM cores, ie. much quieter
++ Added Overdrive mode which amplifies the sound to levels similar to a typical MP3 file. It can cause clipping, though.
 
 0.26 14/4/02
 ============

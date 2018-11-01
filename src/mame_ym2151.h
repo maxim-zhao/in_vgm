@@ -55,12 +55,14 @@ typedef signed int		INT32;   /* signed 32bit   */
 #endif
 #endif
 
+#ifndef INLINE
 #if defined(_MSC_VER)
 #define INLINE static __forceinline
 #elif defined(__GNUC__)
 #define INLINE __inline__
 #else
 #define INLINE
+#endif
 #endif
 
 /* 16- and 8-bit samples (signed) are supported*/

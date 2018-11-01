@@ -61,6 +61,8 @@
 #define cbYM2612All                     1038
 #define gbYM2151                        1039
 #define cbYM2151All                     1040
+#define cbYM2413HiQ                     1041
+#define cbOverDrive                     1042
 
 // Next default values for new objects
 // 
@@ -68,9 +70,9 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        104
+#define _APS_NEXT_RESOURCE_VALUE        106
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1039
+#define _APS_NEXT_CONTROL_VALUE         1043
 #define _APS_NEXT_SYMED_VALUE           111
 #endif
 #endif

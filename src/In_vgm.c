@@ -6,11 +6,12 @@
 // with help from BlackAura in March and April 2002
 //-----------------------------------------------------------------
 
-#define YM2413toPSG 0.6	// SMS/Mark III with FM pack - empirical value, real output would help
-#define YM2612toPSG 0.8	// Mega Drive/Genesis
-#define YM2151toXXX 0.5 // CPS1
+// PSG volume reduced to match FM emulators
+#define YM2413toPSG 0.5	// SMS/Mark III with FM pack - empirical value, real output would help
+#define YM2612toPSG 0.5	// Mega Drive/Genesis
+//#define YM2151toXXX 0.5
 
-#define PLUGINNAME "VGM input plugin v0.26"
+#define PLUGINNAME "VGM input plugin v0.27"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
@@ -118,7 +119,9 @@ int
 	FileInfoJapanese,	// Whether to show Japanese in the info dialogue
 	UseMB,			// Whether to open HTML in the MB
 	AutoMB,			// Whether to automatically show HTML in MB
-	ForceMBOpen;	// Whether to force the MB to open if closed when doing AutoMB
+	ForceMBOpen,	// Whether to force the MB to open if closed when doing AutoMB
+	YM2413HiQ,
+	Overdrive;
 long int 
 	YM2413Channels=YM2413MUTE_ALLON,	// backup when stopped. PSG does it itself.
 	YM2612Channels=YM2612MUTE_ALLON,
@@ -350,11 +353,15 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			} else {
 				SetDlgItemText(DlgWin,ebPlaybackRate,"60");
 			};
+			// MB settings
 			CheckDlgButton(DlgWin,cbUseMB        ,UseMB);
 			CheckDlgButton(DlgWin,cbAutoMB       ,AutoMB);
 			CheckDlgButton(DlgWin,cbForceMBOpen  ,ForceMBOpen);
 			EnableWindow(GetDlgItem(DlgWin,cbAutoMB     ),UseMB);
 			EnableWindow(GetDlgItem(DlgWin,cbForceMBOpen),UseMB & AutoMB);
+			// Quality settings
+			CheckDlgButton(DlgWin,cbYM2413HiQ	 ,YM2413HiQ);
+			CheckDlgButton(DlgWin,cbOverDrive	 ,Overdrive);
 
 			return (TRUE);
 		};
@@ -445,15 +452,19 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				case cbForceMBOpen:
 					ForceMBOpen=IsDlgButtonChecked(DlgWin,cbForceMBOpen);
 					break;
-				case cbYM2612All: {
+				case cbYM2612All:
 					YM2612Channels=!IsDlgButtonChecked(DlgWin,cbYM2612All);
 					break;
-				};
-				case cbYM2151All: {
+				case cbYM2151All:
 					YM2151Channels=!IsDlgButtonChecked(DlgWin,cbYM2151All);
 					break;
-				};
-
+				case cbYM2413HiQ:
+					YM2413HiQ=IsDlgButtonChecked(DlgWin,cbYM2413HiQ);
+					if USINGCHIP(FM_YM2413) OPLL_set_quality(opll,YM2413HiQ);
+					break;
+				case cbOverDrive:
+					Overdrive=IsDlgButtonChecked(DlgWin,cbOverDrive);
+					break;
             };
             break ;
     }
@@ -479,8 +490,8 @@ void about(HWND hwndParent)
 		"  compared to the real thing. Noise pattern is 100% accurate to my SMS2's\n"
 		"  output after I calculated the feedback network; but it doesn't match\n"
 		"  some other chips.\n"
-		"YM2413 - via EMU2413 (http://www.angel.ne.jp/~okazaki/ym2413).\n"
-		"YM2612 & YM2151 - via MAME FM core, thanks to BlackAura\n\n"
+		"YM2413 - via EMU2413 0.55 (http://www.angel.ne.jp/~okazaki/ym2413).\n"
+		"YM2612 & YM2151 - via MAME 0.37 FM core, thanks to BlackAura\n\n"
 		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial\n"
 		"project and as such it is permanently in beta.\n\n"
 		"Thanks go to:\n"
@@ -512,6 +523,8 @@ void init() {
 	UseMB           =GetPrivateProfileInt(INISECTION,"Use Minibrowser"     ,1,INIFileName);
 	AutoMB          =GetPrivateProfileInt(INISECTION,"Auto-show HTML"      ,0,INIFileName);
 	ForceMBOpen     =GetPrivateProfileInt(INISECTION,"Force MB open"       ,0,INIFileName);
+	YM2413HiQ       =GetPrivateProfileInt(INISECTION,"High quality YM2413" ,0,INIFileName);
+	Overdrive       =GetPrivateProfileInt(INISECTION,"Overdrive"           ,1,INIFileName);
 
 	GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
 
@@ -537,6 +550,8 @@ void quit() {
 	WritePrivateProfileString(INISECTION,"Use Minibrowser"     ,itoa(UseMB           ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Auto-show HTML"      ,itoa(AutoMB          ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Force MB open"       ,itoa(ForceMBOpen     ,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"High quality YM2413" ,itoa(YM2413HiQ       ,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Overdrive"           ,itoa(Overdrive       ,tempstr,10),INIFileName);
 
 	DeleteFile(TextFileName);
 };
@@ -810,10 +825,7 @@ void stop() {
 	mod.SAVSADeInit();	// Deinit vis
 
 	// Stop YM2413
-	if USINGCHIP(FM_YM2413) {
-		OPLL_delete(opll);
-		OPLL_close();
-	}
+	if USINGCHIP(FM_YM2413) OPLL_delete(opll);
 
 	// Stop YM2612
 	if USINGCHIP(FM_YM2413) YM2612Shutdown();
@@ -1216,6 +1228,9 @@ void getfileinfo(char *filename, char *title, int *length_in_ms)
 								i++;
 							};
 						};
+				} else {
+					// Problem with GD3
+					sprintf(TrackTitle,"GD3 invalid: %s",JustFileName);
 				};
 			} else {	// No GD3 tag, so use filename
 				strcpy(TrackTitle,JustFileName);
@@ -1282,11 +1297,11 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						if (FMClock) {
 							if (!USINGCHIP(FM_YM2413)) {	// BlackAura - If YM2413 emu not started, start it
 								// Start the emulator up
-								OPLL_init(FMClock,SAMPLERATE);
-								opll=OPLL_new();
+								opll=OPLL_new(FMClock,SAMPLERATE);
 								OPLL_reset(opll);
 								OPLL_reset_patch(opll,0);
 								OPLL_setMask(opll,YM2413Channels);
+								OPLL_set_quality(opll,YM2413HiQ);
 								// Set the flag for it
 								FMChips|=FM_YM2413;
 							};
@@ -1398,9 +1413,14 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 						if (PSGClock) {
 							// If PSG then mix it
-							FMVal=(int)(YM2413toPSG*FMVal);
-							l=FMVal+(int)(l*(1-YM2413toPSG));
-							r=FMVal+(int)(r*(1-YM2413toPSG));
+							if (Overdrive) {
+								FMVal=(int)(YM2413toPSG*FMVal);
+								l=FMVal+(int)(l*(1-YM2413toPSG));
+								r=FMVal+(int)(r*(1-YM2413toPSG));
+							} else {
+								l+=FMVal;
+								r+=FMVal;
+							};
 						} else {
 							// else keep full volume
 							l=FMVal;
@@ -1425,42 +1445,56 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
 
 						if (MixAmount!=DBL_MIN) {	// Mix
-							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
-							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
+							if (Overdrive) {
+								l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
+								r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
+							} else {
+								l+=mameLeft;
+								r+=mameRight;
+							};
 						} else {	// No mixing
 							l=mameLeft ;
 							r=mameRight;
 						};
 					};
 
-					// YM2151
+					// YM2151 - mixing removed since it's unlikely to be needed
 					if USINGCHIP(FM_YM2151) {
 						signed short *mameBuffer[2];
 						signed short mameLeft;
 						signed short mameRight;
-						double MixAmount=DBL_MIN;	// Add different mixing for different chip combinations? maybe
-						if (PSGClock) MixAmount=YM2151toXXX;
+//						double MixAmount=DBL_MIN;	// Add different mixing for different chip combinations? maybe
+//						if (PSGClock) MixAmount=YM2151toXXX;
 
 						// Get values
 						mameBuffer[0]=&mameLeft ;
 						mameBuffer[1]=&mameRight;
 
-						if (YM2151Channels==0) {
+						if (YM2151Channels==0)
 							YM2151UpdateOne(0,mameBuffer,1);
-							mameLeft *=2;	// Dodgy amplification
-							mameRight*=2;
-						} else
+						else
 							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
 
-						if (MixAmount!=DBL_MIN) {	// Mix?
-							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
-							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
-						} else {	// No mixing
+//						if (MixAmount!=DBL_MIN) {	// Mix?
+//							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
+//							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
+//						} else {	// No mixing
 							l=mameLeft ;
 							r=mameRight;
-						};
+//						};
 					};
 
+				};
+
+				if (Overdrive) {
+					l*=4;
+					if (l>+32767) l=+32767;
+					else
+					if (l<-32767) l=-32767;
+					r*=4;
+					if (r>+32767) r=+32767;
+					else
+					if (r<-32767) r=-32767;
 				};
 
 				SampleBuffer[2*x]  =l;

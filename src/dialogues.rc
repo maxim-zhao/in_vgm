@@ -109,7 +109,7 @@ BEGIN
     LTEXT           "&Percussion:",lblPSGPerc,75,64,52,10,SS_CENTERIMAGE
     CONTROL         "Noise",cbTone4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
                     74,52,10
-    GROUPBOX        "YM2413",gbYM2413,6,88,123,73
+    GROUPBOX        "YM2&413",gbYM2413,6,88,123,73
     CONTROL         "To&ne channels:",cbYM2413ToneAll,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,11,98,63,10
     CONTROL         "1",cbYM24131,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
@@ -146,19 +146,19 @@ BEGIN
                     WS_TABSTOP,75,138,52,10
     CONTROL         "Bass drum",cbYM241314,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,75,148,52,10
-    GROUPBOX        "YM2612",gbYM2612,6,161,60,22
+    GROUPBOX        "YM261&2",gbYM2612,6,161,60,22
     CONTROL         "All channels",cbYM2612All,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,11,170,52,10
-    GROUPBOX        "YM2151",gbYM2151,69,161,60,22
+    GROUPBOX        "YM2&151",gbYM2151,69,161,60,22
     CONTROL         "All channels",cbYM2151All,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,75,170,52,10
     GROUPBOX        "GD3/HTML display",IDC_STATIC,2,189,131,42
     CONTROL         "Use &MiniBrowser to display HTML",cbUseMB,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,199,122,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,198,122,10
     CONTROL         "Auto-display &GD3 in MB/browser",cbAutoMB,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,209,122,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,208,122,10
     CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,219,122,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,218,122,10
     GROUPBOX        "Playback rate",IDC_STATIC,136,0,93,74
     CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,141,12,62,10
@@ -178,7 +178,12 @@ BEGIN
     EDITTEXT        ebTrackTitle,141,86,81,12,ES_AUTOHSCROLL
     LTEXT           "%t = Track title*\n%a = Track author*\n%g = Game name*\n%d = Game release date\n%s = System name*\n%c = File creator\n* use %?j for\n   Japanese text",
                     IDC_STATIC,141,99,83,64,NOT WS_GROUP
-    ICON            "MAINICON",IDC_STATIC,141,211,20,20
+    ICON            "MAINICON",IDC_STATIC,136,211,20,20
+    GROUPBOX        "Quality",IDC_STATIC,136,168,93,33
+    CONTROL         "High &quality YM2413",cbYM2413HiQ,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,141,178,82,10
+    CONTROL         "O&verdrive",cbOverDrive,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,141,188,82,10
 END
 
 

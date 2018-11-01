@@ -33,7 +33,7 @@ typedef struct {
 
   /* OUTPUT */
   e_int32 feedback ;
-  e_int32 output[5] ;      /* Output value of slot */
+  e_int32 output[5] ;   /* Output value of slot */
 
   /* for Phase Generator (PG) */
   e_uint16 *sintbl ;    /* Wavetable */
@@ -53,11 +53,9 @@ typedef struct {
   e_uint32 eg_dphase ;  /* Phase increment amount */
   e_uint32 egout ;      /* output */
 
-
   /* refer to opll-> */
   e_int32 *plfo_pm ;
   e_int32 *plfo_am ;
-
 
 } OPLL_SLOT ;
 
@@ -82,16 +80,21 @@ typedef struct {
 /* opll */
 typedef struct {
 
+  e_uint32 realstep ;
+  e_uint32 oplltime ;
+  e_uint32 opllstep ;
+
   e_uint32 adr ;
 
-  e_int32 output[2] ;
+  e_int32 out, prev, next ;
+#ifndef EMU2413_COMPACTION
+  e_int32 sprev[2],snext[2];
+  e_uint32 pan[16];
+#endif
 
   /* Register */
   e_uint8 reg[0x40] ; 
   e_int32 slot_on_flag[18] ;
-
-  /* Rythm Mode : 0 = OFF, 1 = ON */
-  e_int32 rythm_mode ;
 
   /* Pitch Modulator */
   e_uint32 pm_phase ;
@@ -101,6 +104,7 @@ typedef struct {
   e_int32 am_phase ;
   e_int32 lfo_am ;
 
+  e_uint32 quality;
 
   /* Noise Generator */
   e_uint32 noise_seed ;
@@ -124,18 +128,16 @@ typedef struct {
 
 } OPLL ;
 
-/* Initialize */
-EMU2413_API void OPLL_init(e_uint32 clk, e_uint32 rate) ;
-EMU2413_API void OPLL_close(void) ;
-
 /* Create Object */
-EMU2413_API OPLL *OPLL_new(void) ;
+EMU2413_API OPLL *OPLL_new(e_uint32 clk, e_uint32 rate) ;
 EMU2413_API void OPLL_delete(OPLL *) ;
 
 /* Setup */
 EMU2413_API void OPLL_reset(OPLL *) ;
 EMU2413_API void OPLL_reset_patch(OPLL *, e_int32) ;
-EMU2413_API void OPLL_setClock(e_uint32 c, e_uint32 r) ;
+EMU2413_API void OPLL_set_rate(OPLL *opll, e_uint32 r) ;
+EMU2413_API void OPLL_set_quality(OPLL *opll, e_uint32 q) ;
+EMU2413_API void OPLL_set_pan(OPLL *, e_uint32 ch, e_uint32 pan);
 
 /* Port/Register access */
 EMU2413_API void OPLL_writeIO(OPLL *, e_uint32 reg, e_uint32 val) ;
@@ -143,13 +145,12 @@ EMU2413_API void OPLL_writeReg(OPLL *, e_uint32 reg, e_uint32 val) ;
 
 /* Synthsize */
 EMU2413_API e_int16 OPLL_calc(OPLL *) ;
+EMU2413_API void OPLL_calc_stereo(OPLL *, e_int32 out[2]) ;
 
 /* Misc */
 EMU2413_API void OPLL_setPatch(OPLL *, const e_uint8 *dump) ;
-
 EMU2413_API void OPLL_copyPatch(OPLL *, e_int32, OPLL_PATCH *) ;
 EMU2413_API void OPLL_forceRefresh(OPLL *) ;
-
 /* Utility */
 EMU2413_API void OPLL_dump2patch(const e_uint8 *dump, OPLL_PATCH *patch) ;
 EMU2413_API void OPLL_patch2dump(const OPLL_PATCH *patch, e_uint8 *dump) ;

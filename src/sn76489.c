@@ -22,7 +22,7 @@
 #define NoiseWhiteFeedback 0x0009
 
 // These values are taken from a real SMS2's output
-static const unsigned short int PSGVolumeValues[16] = {8028,8028,8028,6842,5603,4471,3636,2909,2316,1778,1427,1104,862,673,539,0};
+static const unsigned short int PSGVolumeValues[16] = {892,892,892,760,623,497,404,323,257,198,159,123,96,75,60,0};
 
 // Variables
 static float

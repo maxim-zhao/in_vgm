@@ -147,6 +147,18 @@ SOURCE=.\out.h
 
 SOURCE=.\mainicon.ico
 # End Source File
+# Begin Source File
+
+SOURCE=.\ym2413.bmp
+# End Source File
 # End Group
+# Begin Source File
+
+SOURCE=".\in_vgm source readme.txt"
+# End Source File
+# Begin Source File
+
+SOURCE=.\in_vgm.txt
+# End Source File
 # End Target
 # End Project
