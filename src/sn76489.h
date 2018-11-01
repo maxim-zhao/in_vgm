@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void SN76489_Init(const unsigned long PSGClockValue,const unsigned long SamplingRate);
+void SN76489_Init(const unsigned long PSGClockValue,const unsigned long SamplingRate,const int FeedbackPattern);
 void SN76489_Write(const unsigned char data);
 void SN76489_GGStereoWrite(const unsigned char data);
 void SN76489_GetValues(int *left,int *right);

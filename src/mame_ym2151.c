@@ -389,7 +389,7 @@ static void init_tables(void)
 	for (i=0; i<16; i++)
 	{
 		m = (i!=15 ? i : i+16) * (4.0/ENV_STEP);   /* every 3 'dB' except for all bits = 1 = 45+48 'dB' */
-		d1l_tab[i] = m * (1<<ENV_SH);
+		d1l_tab[i] = (unsigned int)(m * (1<<ENV_SH));
 		/*logerror("d1l_tab[%02x]=%08x\n",i,d1l_tab[i] );*/
 	}
 
@@ -498,7 +498,7 @@ static void init_chip_tables(YM2151 *chip)
 			phaseinc = (Hz*SIN_LEN) / (double)chip->sampfreq;
 
 			/*positive and negative values*/
-			chip->dt1_freq[ (j+0)*32 + i ] = phaseinc * mult;
+			chip->dt1_freq[ (j+0)*32 + i ] = (int)(phaseinc * mult);
 			chip->dt1_freq[ (j+4)*32 + i ] = -chip->dt1_freq[ (j+0)*32 + i ];
 
 #if 0
@@ -525,7 +525,7 @@ static void init_chip_tables(YM2151 *chip)
 		pom *= 1<<((i>>2));
 		pom /= 768.0 * 1024.0;
 		pom *= (double)(1<<ENV_SH);
-		chip->eg_tab[32+i] = pom;
+		chip->eg_tab[32+i] = (unsigned int)pom;
 #if 0
 		logerror("Rate %2i %1i  Decay [real %11.4f ms][emul %11.4f ms][d=%08x]\n",i>>2, i&3,
 			( ((double)(ENV_LEN<<ENV_SH)) / pom )                        * (1000.0 / (double)chip->sampfreq),
@@ -548,7 +548,7 @@ static void init_chip_tables(YM2151 *chip)
 		#ifdef USE_MAME_TIMERS
 			chip->timer_A_time[i] = pom;
 		#else
-			chip->tim_A_tab[i] = pom * (double)chip->sampfreq * mult;  /* number of samples that timer period takes (fixed point) */
+			chip->tim_A_tab[i] = (unsigned int)(pom * (double)chip->sampfreq * mult);  /* number of samples that timer period takes (fixed point) */
 		#endif
 	}
 	for (i=0; i<256; i++)
@@ -558,7 +558,7 @@ static void init_chip_tables(YM2151 *chip)
 		#ifdef USE_MAME_TIMERS
 			chip->timer_B_time[i] = pom;
 		#else
-			chip->tim_B_tab[i] = pom * (double)chip->sampfreq * mult;  /* number of samples that timer period takes (fixed point) */
+			chip->tim_B_tab[i] = (unsigned int)(pom * (double)chip->sampfreq * mult);  /* number of samples that timer period takes (fixed point) */
 		#endif
 	}
 
@@ -568,9 +568,9 @@ static void init_chip_tables(YM2151 *chip)
 	{
 		j = (i!=31 ? i : 30);				/* rate 30 and 31 are the same */
 		j = 32-j;
-		j = (65536.0 / (double)(j*32.0));	/* number of samples per one shift of the shift register */
+		j = (int)((65536.0 / (double)(j*32.0)));	/* number of samples per one shift of the shift register */
 		/*chip->noise_tab[i] = j * 64;*/	/* number of chip clock cycles per one shift */
-		chip->noise_tab[i] = j * 64 * scaler;
+		chip->noise_tab[i] = (unsigned int)(j * 64 * scaler);
 		/*logerror("noise_tab[%02x]=%08x\n", i, chip->noise_tab[i]);*/
 	}
 }
@@ -1024,7 +1024,7 @@ void YM2151WriteReg(int n, int r, int v)
 
 		case 0x08:	/* Key Code */
 			v &= 0x7f;
-			if (v != op->kc)
+			if (v != (int)(op->kc))
 			{
 				UINT32 kc, kc_channel;
 
@@ -1061,7 +1061,7 @@ void YM2151WriteReg(int n, int r, int v)
 
 		case 0x10:	/* Key Fraction */
 			v >>= 2;
-			if (v !=  (op->kc_i & 63))
+			if (v !=  (int)(op->kc_i & 63))
 			{
 				UINT32 kc_channel;
 
@@ -1328,7 +1328,7 @@ int YM2151Init(int num, int clock, int rate)
 	ym2151_state_save_register( YMNumChips );
 
 	init_tables();
-	for (i=0 ; i<YMNumChips; i++)
+	for (i=0 ; i<(int)YMNumChips; i++)
 	{
 		YMPSG[i].clock = clock;
 		/*rate = clock/64;*/
@@ -1338,7 +1338,7 @@ int YM2151Init(int num, int clock, int rate)
 		// YMPSG[i].porthandler = NULL;				/* port write handler */
 		init_chip_tables( &YMPSG[i] );
 
-		YMPSG[i].lfo_timer_add = (1<<LFO_SH) * (clock/64.0) / YMPSG[i].sampfreq;
+		YMPSG[i].lfo_timer_add = (unsigned int)((1<<LFO_SH) * (clock/64.0) / YMPSG[i].sampfreq);
 		YMPSG[i].lfo_counter  = 0;
 
 #ifdef USE_MAME_TIMERS
@@ -1606,7 +1606,7 @@ INLINE void chan7_calc(void)
 		noiseout = 0;
 		if (env < 0x3ff)
 			noiseout = (env ^ 0x3ff) * 2;	/* range of the YM2151 noise output is -2044 to 2040 */
-		chanout[7] += ((PSG->noise_rng&0x10000) ? noiseout: -noiseout); /* bit 16 -> output */
+		chanout[7] += ((PSG->noise_rng&0x10000) ? noiseout: -(int)noiseout); /* bit 16 -> output */
 	}
 	else
 	{
@@ -1657,7 +1657,7 @@ INLINE void advance_eg(void)
 		break;
 
 		case EG_DEC:	/* decay phase */
-			if ( (op->volume += op->delta_d1r) >= op->d1l )
+			if ( (op->volume += op->delta_d1r) >= (int)op->d1l )
 			{
 				op->volume = op->d1l;	/* this is not quite correct (checked) */
 				op->state = EG_SUS;

@@ -19,7 +19,7 @@
 
 // Constants
 #define NoiseInitialState  0x8000
-#define NoiseWhiteFeedback 0x0009
+//#define NoiseWhiteFeedback 0x0009
 
 // These values are taken from a real SMS2's output
 static const int PSGVolumeValues[2][16] = {
@@ -36,13 +36,15 @@ static int
   Channel,
   PSGStereo,
   NumClocksForSample,
-  Active=0;		// Set to true by SN76489_Init(), if false then all procedures exit immediately;
+  Active=0,		// Set to true by SN76489_Init(), if false then all procedures exit immediately
+  WhiteNoiseFeedback;
 
 // PSG registers:
 static unsigned short int  Registers[8];		// Tone, vol x4
 static                int  LatchedRegister;
 static unsigned short int  NoiseShiftRegister;
 static   signed short int  NoiseFreq;			// Noise channel signal generator frequency
+
 
 // Output calculation variables
 static   signed short int  ToneFreqVals[4];		// Frequency register values (counters)
@@ -52,13 +54,15 @@ static   signed long  int  IntermediatePos[4];	// intermediate values used at bo
 
 
 //------------------------------------------------------------------------------
-void SN76489_Init(const unsigned long PSGClockValue,const unsigned long SamplingRate)
+void SN76489_Init(const unsigned long PSGClockValue,const unsigned long SamplingRate,const int FeedbackPattern)
 {
 	int i;
 
 	Active=(PSGClockValue>0);
 
 	if (!Active) return;
+
+	WhiteNoiseFeedback=FeedbackPattern;
 
 	dClock=(float)PSGClockValue/16/SamplingRate;
 	PSGFrequencyLowBits=0;
@@ -191,29 +195,35 @@ void SN76489_GetValues(int *left,int *right)
 		if (NoiseFreq!=0x80)			// If not matching tone2, decrement counter
 			ToneFreqVals[3]+=NoiseFreq*(NumClocksForSample/NoiseFreq+1);
 		if (ToneFreqPos[3]==1) {	// Only once per cycle...
+			int Feedback;
+			if (Registers[6]&0x4) {	// White noise
+				// Calculate parity of fed-back bits for feedback
+				switch (WhiteNoiseFeedback) {
+					// Do some optimised calculations for common (known) feedback values
+				case 0x0006:	// SC-3000		%00000110
+				case 0x0009:	// SMS, GG, MD	%00001001
+					// If two bits fed back, I can do Feedback=(nsr & fb) && (nsr & fb ^ fb)
+					// since that's (one or more bits set) && (not all bits set)
+					Feedback=((NoiseShiftRegister&WhiteNoiseFeedback) && (NoiseShiftRegister&WhiteNoiseFeedback^WhiteNoiseFeedback));
+					break;
+				case 0x8005:	// BBC Micro
+					// fall through :P can't be bothered to think too much
+				default:		// Default handler for all other feedback values
+					Feedback=NoiseShiftRegister&WhiteNoiseFeedback;
+					Feedback^=Feedback>>8;
+					Feedback^=Feedback>>4;
+					Feedback^=Feedback>>2;
+					Feedback^=Feedback>>1;
+					Feedback&=1;
+					break;
+				};
+			} else		// Periodic noise
+				Feedback=NoiseShiftRegister&1;
 
-			// General method:
-			/*
-			int Feedback=0;
-			if (WhiteNoise) {	// For white noise:
-				int i;			// Calculate the XOR of the tapped bits for feedback
-				unsigned short int tapped=NoiseShiftRegister&NoiseWhiteFeedback;
-				for (i=0;i<16;++i) Feedback+=(tapped>>i)&1;
-				Feedback&=1;
-			} else Feedback=NoiseShiftRegister&1;	// For periodic: feedback=output
 			NoiseShiftRegister=(NoiseShiftRegister>>1) | (Feedback<<15);
-			*/
 
-			// SMS-only method, probably a bit faster:
-			// Verbose:
-			/*
-			int Feedback=0;
-			if (Registers[6]&0x4) Feedback=((NoiseShiftRegister&0x9) && (NoiseShiftRegister&0x9^0x9));
-			else Feedback=NoiseShiftRegister&1;	// For periodic: feedback=output
-			NoiseShiftRegister=(NoiseShiftRegister>>1) | (Feedback<<15);
-			*/
-			// Obfucated:
-			NoiseShiftRegister=(NoiseShiftRegister>>1) | ((Registers[6]&0x4?((NoiseShiftRegister&0x9) && (NoiseShiftRegister&0x9^0x9)):NoiseShiftRegister&1)<<15);
+// Original code:
+//			NoiseShiftRegister=(NoiseShiftRegister>>1) | ((Registers[6]&0x4?((NoiseShiftRegister&0x9) && (NoiseShiftRegister&0x9^0x9)):NoiseShiftRegister&1)<<15);
 		};
 	};
 };

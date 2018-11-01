@@ -54,7 +54,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib /nologo /subsystem:windows /dll /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib zlib.lib urlmon.lib iconv.lib /nologo /subsystem:windows /dll /machine:I386 /out:"D:\program Files\winamp\plugins\in_vgm.dll"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib zlib.lib urlmon.lib /nologo /subsystem:windows /dll /machine:I386 /out:"c:\program Files\winamp\plugins\in_vgm.dll"
 # SUBTRACT LINK32 /incremental:yes
 
 !ELSEIF  "$(CFG)" == "in_vgm - Win32 Debug"
@@ -82,7 +82,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib /nologo /subsystem:windows /dll /debug /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib zlib.lib urlmon.lib iconv.lib /nologo /subsystem:windows /dll /debug /machine:I386 /out:"D:\program Files\winamp\plugins\in_vgm.dll"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib zlib.lib urlmon.lib /nologo /subsystem:windows /dll /debug /machine:I386 /out:"C:\program Files\winamp\plugins\in_vgm.dll"
 # SUBTRACT LINK32 /verbose /pdb:none /incremental:no /nodefaultlib
 
 !ENDIF 
@@ -113,15 +113,24 @@ SOURCE=.\emu2413.c
 # End Source File
 # Begin Source File
 
+SOURCE=.\gens_ym2612.c
+# End Source File
+# Begin Source File
+
 SOURCE=.\In_vgm.c
 # End Source File
 # Begin Source File
 
-SOURCE=.\mame_fm.c
-# End Source File
-# Begin Source File
-
 SOURCE=.\mame_ym2151.c
+
+!IF  "$(CFG)" == "in_vgm - Win32 Release"
+
+!ELSEIF  "$(CFG)" == "in_vgm - Win32 Debug"
+
+# ADD CPP /W1
+
+!ENDIF 
+
 # End Source File
 # Begin Source File
 
@@ -145,17 +154,12 @@ SOURCE=.\out.h
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe"
 # Begin Source File
 
-SOURCE=.\Image1.bmp
-# End Source File
-# Begin Source File
-
 SOURCE=.\mainicon.ico
 # End Source File
-# Begin Source File
-
-SOURCE=.\ym2413.bmp
-# End Source File
 # End Group
+# Begin Group "Documentation"
+
+# PROP Default_Filter "txt"
 # Begin Source File
 
 SOURCE=".\in_vgm source readme.txt"
@@ -164,5 +168,6 @@ SOURCE=".\in_vgm source readme.txt"
 
 SOURCE=.\in_vgm.txt
 # End Source File
+# End Group
 # End Target
 # End Project

@@ -6,18 +6,22 @@
 // with help from BlackAura in March and April 2002
 //-----------------------------------------------------------------
 
+#define YM2612GENS // Use Gens YM2612 rather than MAME
+
 // Relative volumes of sound cores
 // PSG = 1
 #define YM2413RelativeVol 1	// SMS/Mark III with FM pack - empirical value, real output would help
-#define YM2612RelativeVol 3	// Mega Drive/Genesis
+#define GENSYM2612RelativeVol 4	// Mega Drive/Genesis
+#define MAMEYM2612RelativeVol 3	// Mega Drive/Genesis
 #define YM2151RelativeVol 4 // CPS1
 
-#define PLUGINNAME "VGM input plugin v0.29"
+#define PLUGINNAME "VGM input plugin v0.30"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
 #define MINGD3VERSION 0x100
 #define REQUIREDGD3MAJORVER 0x100
+
 // PSG has 4 channels, 2^4-1=0xf
 #define SN76489_MUTE_ALLON 0xf
 // YM2413 has 14 (9 + 5 percussion), BUT it uses 1=mute, 0=on
@@ -29,6 +33,9 @@
 #include <windows.h>
 #include <stdio.h>
 #include <float.h>
+#include <commctrl.h>
+#include <zlib.h>
+#include <urlmon.h>
 
 #include "in2.h"
 
@@ -36,14 +43,19 @@
 #include "emu2413.h"
 
 #include "sn76489.h"
-#include "zlib.h"
 #include "resource.h"
-#include "urlmon.h"
-#include "commctrl.h"
 
 // BlackAura - MAME FM synthesiser (aargh!)
-#include "mame_fm.h"
-#include "mame_ym2151.h"
+#include "mame_ym2151.h"	// MAME YM2151
+
+#ifdef YM2612GENS
+#include "gens_ym2612.h"	// Gens YM2612
+#else
+#include "mame_fm.h"		// MAME YM2151
+#endif
+
+// MAME 0.67 YM2413 core
+//#include "mame_ym2413.h"
 
 #define ROUND(x) ((int)(x>0?x+0.5:x-0.5))
 
@@ -65,6 +77,7 @@ BOOL WINAPI _DllMainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lp
 #define NCH 2			// Number of channels
 						// NCH 1 doesn't work properly... yet. I might fix it later.
 #define SAMPLERATE 44100// Sampling rate
+#define MAX_VOLUME 100	// Number of steps for fadeout; can't have too many because of overflow
 
 In_Module mod;			// the output module (declared near the bottom of this file)
 char lastfn[MAX_PATH]="";	// currently playing file (used for getting info on the current file)
@@ -76,7 +89,7 @@ short SampleBuffer[SampleBufferSize];	// sample buffer
 
 gzFile *InputFile;
 
-OPLL *opll;
+OPLL *opll;	// EMU2413 structure
 
 // BlackAura - FMChip flags
 #define FM_YM2413	0x01	// Bit 0 = YM2413
@@ -88,7 +101,7 @@ OPLL *opll;
 struct TVGMHeader {
 	char	VGMIdent[4];	// "Vgm "
 	long	EoFOffset;		// relative offset (from this point, 0x04) of the end of file
-	long	Version;		// 0x00000101 for 1.01
+	long	Version;		// 0x00000102 for 1.02
 	long	PSGClock;		// typically 3579545, 0 for no PSG
 	long	FMClock;		// typically 3579545, 0 for no FM
 	long	GD3Offset;		// relative offset (from this point, 0x14) of the Gd3 tag, 0 if not present
@@ -96,6 +109,7 @@ struct TVGMHeader {
 	long	LoopOffset;		// relative again (to 0x1c), 0 if no loop
 	long	LoopLength;		// in samples, 0 if no loop
 	long	RecordingRate;	// in Hz, for speed-changing, 0 for no changing
+	long	PSGWhiteNoiseFeedback;	// Feedback pattern for white noise generator; if <v1.02, substitute default of 0x0009
 };
 
 struct TGD3Header {
@@ -112,7 +126,6 @@ DWORD WINAPI __stdcall DecodeThread(void *b); // the decode thread procedure
 // forward references
 void setoutputtime(int time_in_ms);
 int  getoutputtime();
-
 
 int
 	TrackLengthInms,	// Current track length in ms
@@ -132,7 +145,13 @@ int
 	ForceMBOpen,	// Whether to force the MB to open if closed when doing AutoMB
 	YM2413HiQ,
 	Overdrive,
-	ImmediateUpdate;
+	ImmediateUpdate,
+	PauseBetweenTracksms,
+	PauseBetweenTracksCounter,
+	LoopingFadeOutms=5000,
+	LoopingFadeOutCounter,
+	LoopingFadeOutTotal,
+	MutePersistent=0;
 long int 
 	YM2413Channels=YM2413MUTE_ALLON,	// backup when stopped. PSG does it itself.
 	YM2612Channels=YM2612MUTE_ALLON,
@@ -297,6 +316,14 @@ void InfoInBrowser(char *filename, int ForceOpen) {
 	else ShellExecute(mod.hMainWindow,NULL,TextFileName,NULL,NULL,SW_SHOWNORMAL);
 };
 
+void UpdateIfPlaying() {
+	if (ImmediateUpdate
+		&&(mod.outMod)
+		&&(mod.outMod->IsPlaying())
+	) setoutputtime(getoutputtime());
+}
+
+
 //-----------------------------------------------------------------
 // Configuration dialogue
 //-----------------------------------------------------------------
@@ -306,7 +333,7 @@ HWND CfgTabChildWnds[NumCfgTabChildWnds];	// Holds child windows' HWnds
 #define CfgPlayback	CfgTabChildWnds[0]
 #define CfgMuting	CfgTabChildWnds[1]
 #define CfgGD3		CfgTabChildWnds[2]
-// Dialogue box tabseet handler
+// Dialogue box tabsheet handler
 BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam);
 void MakeTabbedDialogue(HWND hWndMain) {
 	// Variables
@@ -402,8 +429,14 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			};
 			// Immediate update checkbox
 			CheckDlgButton(CfgMuting,cbMuteImmediate,ImmediateUpdate);
+			// Persistent muting checkbox
+			CheckDlgButton(CfgMuting,cbMutePersistent,MutePersistent);
 			// Set loop count
-			SetDlgItemInt(CfgPlayback,ebLoopCount,NumLoops,TRUE);
+			SetDlgItemInt(CfgPlayback,ebLoopCount,NumLoops,FALSE);
+			// Set fadeout length
+			SetDlgItemInt(CfgPlayback,ebFadeOutLength,LoopingFadeOutms,FALSE);
+			// Set between-track pause length
+			SetDlgItemInt(CfgPlayback,ebPauseLength,PauseBetweenTracksms,FALSE);
 			// Set title format text
 			SetDlgItemText(CfgGD3,ebTrackTitle,TrackTitleFormat);
 			// Speed settings
@@ -440,6 +473,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			CheckDlgButton(CfgPlayback,cbBoostPSGNoise  ,SN76489_BoostNoise);
 			CheckDlgButton(CfgPlayback,cbSmoothPSGVolume,SN76489_VolumeArray);
 
+			SetFocus(DlgWin);
+
 			return (TRUE);
 		};
         case WM_COMMAND:
@@ -448,8 +483,14 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					int i;
 					BOOL MyBool;
 					// Loop count
-					i=GetDlgItemInt(CfgPlayback,ebLoopCount,&MyBool,TRUE);
+					i=GetDlgItemInt(CfgPlayback,ebLoopCount,&MyBool,FALSE);
 					if (MyBool) NumLoops=i;
+					// Fadeout length
+					i=GetDlgItemInt(CfgPlayback,ebFadeOutLength,&MyBool,FALSE);
+					if (MyBool) LoopingFadeOutms=i;
+					// Between-track pause length
+					i=GetDlgItemInt(CfgPlayback,ebPauseLength,&MyBool,FALSE);
+					if (MyBool) PauseBetweenTracksms=i;
 					// Track title format
 					GetDlgItemText(CfgGD3,ebTrackTitle,TrackTitleFormat,100);
 					// Playback rate
@@ -462,6 +503,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 						i=GetDlgItemInt(CfgPlayback,ebPlaybackRate,&MyBool,TRUE);
 						if ((MyBool) && (i>0) && (i<500)) PlaybackRate=i;
 					};
+					// Persistent muting checkbox
+					MutePersistent=IsDlgButtonChecked(CfgMuting,cbMutePersistent);
 				};
                     EndDialog(DlgWin,0);
                     return (TRUE) ;
@@ -477,7 +520,7 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 								|(IsDlgButtonChecked(CfgMuting,cbTone3) << 2)
 								|(IsDlgButtonChecked(CfgMuting,cbTone4) << 3);
 					CheckDlgButton(CfgMuting,cbPSGToneAll,((SN76489_Mute&7)==7));
-					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					UpdateIfPlaying();
 					break;
 				case rbRateOriginal:
 				case rbRate50:
@@ -496,7 +539,7 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					for (i=0;i<15;i++) YM2413Channels|=(!IsDlgButtonChecked(CfgMuting,cbYM24131+i))<<i;
 					if USINGCHIP(FM_YM2413) {
 						OPLL_setMask(opll,YM2413Channels);
-						if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+						UpdateIfPlaying();
 					}
 					CheckDlgButton(CfgMuting,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
 					CheckDlgButton(CfgMuting,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
@@ -537,33 +580,33 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					break;
 				case cbYM2612All:
 					YM2612Channels=!IsDlgButtonChecked(CfgMuting,cbYM2612All);
-					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					UpdateIfPlaying();
 					break;
 				case cbYM2151All:
 					YM2151Channels=!IsDlgButtonChecked(CfgMuting,cbYM2151All);
-					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					UpdateIfPlaying();
 					break;
 				case cbYM2413HiQ:
 					YM2413HiQ=IsDlgButtonChecked(CfgPlayback,cbYM2413HiQ);
 					if USINGCHIP(FM_YM2413) {
 						OPLL_set_quality(opll,YM2413HiQ);
-						if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+						UpdateIfPlaying();
 					}
 					break;
 				case cbOverDrive:
 					Overdrive=IsDlgButtonChecked(CfgPlayback,cbOverDrive);
-					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					UpdateIfPlaying();
 					break;
 				case cbBoostPSGNoise:
 					SN76489_BoostNoise=IsDlgButtonChecked(CfgPlayback,cbBoostPSGNoise);
-					if (PSGClock&&ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					UpdateIfPlaying();
 					break;
 				case cbSmoothPSGVolume:
 					SN76489_VolumeArray=IsDlgButtonChecked(CfgPlayback,cbSmoothPSGVolume);
-					if (PSGClock&&ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					UpdateIfPlaying();
 					break;
 				case cbMuteImmediate:
-					ImmediateUpdate=IsDlgButtonChecked(CfgMuting,cbMuteImmediate);
+					UpdateIfPlaying();
 					break;
 				case btnReadMe:
 					{
@@ -571,7 +614,7 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 						char *PChar;
 						GetModuleFileName(PluginhInst,FileName,MAX_PATH);	// get *dll* path
 						GetFullPathName(FileName,MAX_PATH,FileName,&PChar);	// make it fully qualified plus find the filename bit
-						strcpy(PChar,"in_vgm.txt");	// Change to plugin.ini
+						strcpy(PChar,"in_vgm.txt");
 						if ((int)ShellExecute(mod.hMainWindow,NULL,FileName,NULL,NULL,SW_SHOWNORMAL)<=32)
 							MessageBox(DlgWin,"Error opening in_vgm.txt from plugin folder",mod.description,MB_ICONERROR+MB_OK);
 					}
@@ -589,7 +632,7 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 						{
 							int i=TabCtrl_GetCurSel(GetDlgItem(DlgWin,tcMain));
 							SetWindowPos(CfgTabChildWnds[i],HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW);
-							SetFocus(CfgTabChildWnds[i]);
+//							SetFocus(CfgTabChildWnds[i]);
 						};
 						break;
 					};
@@ -610,25 +653,20 @@ void config(HWND hwndParent)
 void about(HWND hwndParent)
 {
 	MessageBox(hwndParent,
-		"VGM 1.01 Winamp input plugin\n\n"
-		"by Maxim in 2001 and 2002\n"
+		PLUGINNAME "\n\n"
+		"by Maxim in 2001, 2002 and 2003\n"
 		"maxim@mwos.cjb.net\n"
 		"http://www.smspower.org/music\n\n"
 		"Current status:\n"
-		"PSG - emulated as a perfect device, leading to slight differences in sound\n"
-		"  compared to the real thing. Noise pattern is 100% accurate to my SMS2's\n"
-		"  output after I calculated the feedback network; but it doesn't match\n"
-		"  some other chips.\n"
-		"YM2413 - via EMU2413 0.55 (http://www.angel.ne.jp/~okazaki/ym2413).\n"
-		"YM2612 & YM2151 - via MAME FM core (Jarek Burczynski, Hiro-shi),\n"
-		"  thanks to BlackAura\n\n"
-		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial\n"
-		"project and as such it is permanently in beta.\n\n"
-		"Thanks go to:\n"
-		"Mitsutaka Okazaki, Tatsuyuki Satoh, BlackAura, Bock, Heliophobe, Mike G,\n"
-		"Steve Snake, Dave, Charles MacDonald, Ville Helin, John Kortink, fx^\n\n"
-		"   ...and Zhao Yuehua xxx wo ai ni"
-		,mod.description,MB_OK);
+		"PSG - emulated as a perfect device, leading to slight differences in sound compared to the real thing. Noise pattern is 100% accurate, unlike almost every other core out there :P\n"
+		"YM2413 - via EMU2413 0.60 (Mitsutaka Okazaki) (http://www.angel.ne.jp/~okazaki/ym2413).\n"
+		"YM2612 - via Gens 2.10 core (Stéphane Dallongeville (http://gens.consolemul.com).\n"
+		"YM2151 - via MAME FM core (Jarek Burczynski, Hiro-shi), thanks to BlackAura.\n\n"
+		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial project and as such it is permanently in beta.\n\n"
+		"Thanks also go to:\n"
+		"Bock, Heliophobe, Mike G, Steve Snake, Dave, Charles MacDonald, Ville Helin, John Kortink, fx^\n\n"
+		"  ...and Zhao Yuehua xxx wo ai ni"
+		,mod.description,MB_ICONINFORMATION|MB_OK);
 }
 
 //-----------------------------------------------------------------
@@ -642,22 +680,23 @@ void init() {
     GetFullPathName(INIFileName,MAX_PATH,INIFileName,&PChar);	// make it fully qualified plus find the filename bit
 	strcpy(PChar,"plugin.ini");	// Change to plugin.ini
 
-
     GetTempPath(MAX_PATH,TextFileName);
 	strcat(TextFileName,"GD3.html");
 	GetShortPathName(TextFileName,TextFileName,MAX_PATH);
 
-	NumLoops        =GetPrivateProfileInt(INISECTION,"NumLoops"            ,2,INIFileName);
-	PlaybackRate    =GetPrivateProfileInt(INISECTION,"Playback rate"       ,0,INIFileName);
-	FileInfoJapanese=GetPrivateProfileInt(INISECTION,"Japanese in info box",0,INIFileName);
-	UseMB           =GetPrivateProfileInt(INISECTION,"Use Minibrowser"     ,1,INIFileName);
-	AutoMB          =GetPrivateProfileInt(INISECTION,"Auto-show HTML"      ,0,INIFileName);
-	ForceMBOpen     =GetPrivateProfileInt(INISECTION,"Force MB open"       ,0,INIFileName);
-	YM2413HiQ       =GetPrivateProfileInt(INISECTION,"High quality YM2413" ,0,INIFileName);
-	Overdrive       =GetPrivateProfileInt(INISECTION,"Overdrive"           ,1,INIFileName);
-	ImmediateUpdate =GetPrivateProfileInt(INISECTION,"Immediate update"    ,1,INIFileName);
-	SN76489_BoostNoise=GetPrivateProfileInt(INISECTION,"Boost PSG noise"   ,0,INIFileName);
-	SN76489_VolumeArray=GetPrivateProfileInt(INISECTION,"PSG volume curve" ,0,INIFileName);
+	NumLoops			=GetPrivateProfileInt(INISECTION,"NumLoops"				,2,INIFileName);
+	LoopingFadeOutms	=GetPrivateProfileInt(INISECTION,"Fade out length"		,5000,INIFileName);
+	PauseBetweenTracksms=GetPrivateProfileInt(INISECTION,"Pause between tracks"	,2000,INIFileName);
+	PlaybackRate		=GetPrivateProfileInt(INISECTION,"Playback rate"		,0,INIFileName);
+	FileInfoJapanese	=GetPrivateProfileInt(INISECTION,"Japanese in info box"	,0,INIFileName);
+	UseMB				=GetPrivateProfileInt(INISECTION,"Use Minibrowser"		,1,INIFileName);
+	AutoMB				=GetPrivateProfileInt(INISECTION,"Auto-show HTML"		,0,INIFileName);
+	ForceMBOpen			=GetPrivateProfileInt(INISECTION,"Force MB open"		,0,INIFileName);
+	YM2413HiQ			=GetPrivateProfileInt(INISECTION,"High quality YM2413"	,0,INIFileName);
+	Overdrive			=GetPrivateProfileInt(INISECTION,"Overdrive"			,1,INIFileName);
+	ImmediateUpdate		=GetPrivateProfileInt(INISECTION,"Immediate update"		,1,INIFileName);
+	SN76489_BoostNoise	=GetPrivateProfileInt(INISECTION,"Boost PSG noise"		,0,INIFileName);
+	SN76489_VolumeArray	=GetPrivateProfileInt(INISECTION,"PSG volume curve"		,0,INIFileName);
 
 	GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
 
@@ -676,18 +715,20 @@ void quit() {
     GetFullPathName(INIFileName,MAX_PATH,INIFileName,&PChar);	// make it fully qualified plus find the filename bit
 	strcpy(PChar,"plugin.ini");	// Change to plugin.ini
 
-	WritePrivateProfileString(INISECTION,"NumLoops"            ,itoa(NumLoops        ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Playback rate"       ,itoa(PlaybackRate    ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Japanese in info box",itoa(FileInfoJapanese,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Title format"        ,TrackTitleFormat                 ,INIFileName);
-	WritePrivateProfileString(INISECTION,"Use Minibrowser"     ,itoa(UseMB           ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Auto-show HTML"      ,itoa(AutoMB          ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Force MB open"       ,itoa(ForceMBOpen     ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"High quality YM2413" ,itoa(YM2413HiQ       ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Overdrive"           ,itoa(Overdrive       ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Immediate update"    ,itoa(ImmediateUpdate ,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"Boost PSG noise"     ,itoa(SN76489_BoostNoise,tempstr,10),INIFileName);
-	WritePrivateProfileString(INISECTION,"PSG volume curve"    ,itoa(SN76489_VolumeArray,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"NumLoops"            ,itoa(NumLoops				,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Fade out length"     ,itoa(LoopingFadeOutms		,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Pause between tracks",itoa(PauseBetweenTracksms	,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Playback rate"       ,itoa(PlaybackRate			,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Japanese in info box",itoa(FileInfoJapanese		,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Title format"        ,TrackTitleFormat				        ,INIFileName);
+	WritePrivateProfileString(INISECTION,"Use Minibrowser"     ,itoa(UseMB					,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Auto-show HTML"      ,itoa(AutoMB					,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Force MB open"       ,itoa(ForceMBOpen			,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"High quality YM2413" ,itoa(YM2413HiQ				,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Overdrive"           ,itoa(Overdrive				,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Immediate update"    ,itoa(ImmediateUpdate		,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Boost PSG noise"     ,itoa(SN76489_BoostNoise		,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"PSG volume curve"    ,itoa(SN76489_VolumeArray	,tempstr,10),INIFileName);
 
 	DeleteFile(TextFileName);
 };
@@ -780,7 +821,7 @@ int play(char *fn)
 
 	};
 
-	if ((*lastfn) && (strcmp(fn,lastfn)!=0)) {
+	if ((!MutePersistent) && (*lastfn) && (strcmp(fn,lastfn)!=0)) {
 		// If file has changed, reset channel muting
 		SN76489_Mute  =SN76489_MUTE_ALLON;
 		YM2413Channels=YM2413MUTE_ALLON;
@@ -838,6 +879,10 @@ int play(char *fn)
 			return -1;
 		};
 	};
+
+	// Fix stuff for older version files:
+	// Add default white noise feedback for <1.02
+	if (VGMHeader.Version<0x0102) VGMHeader.PSGWhiteNoiseFeedback=0x0009;
 
 	// Get length
 	if (VGMHeader.TotalLength==0) {
@@ -898,12 +943,14 @@ int play(char *fn)
 	// FM Chip startups are done whenever a chip is used for the first time
 
 	// Start up SN76489 (if used)
-	if (PSGClock) SN76489_Init(PSGClock,SAMPLERATE);
+	if (PSGClock) SN76489_Init(PSGClock,SAMPLERATE,VGMHeader.PSGWhiteNoiseFeedback);
 
 	// Reset some stuff
 	paused=0;
 	NumLoopsDone=0;
 	SeekToSampleNumber=-1;
+	PauseBetweenTracksCounter=-1;	// signals "not pausing"; 0+ = samples left to pause
+	LoopingFadeOutTotal=-1;			// signals "haven't started fadeout yet"
 
 	// Start up decode thread
 	killDecodeThread=0;
@@ -961,13 +1008,20 @@ void stop() {
 	mod.SAVSADeInit();	// Deinit vis
 
 	// Stop YM2413
-	if USINGCHIP(FM_YM2413) OPLL_delete(opll);
+	if USINGCHIP(FM_YM2413) 
+		OPLL_delete(opll);
 
 	// Stop YM2612
-	if USINGCHIP(FM_YM2612) YM2612Shutdown();
+	if USINGCHIP(FM_YM2612)
+#ifdef YM2612GENS
+		YM2612_End();
+#else
+		YM2612Shutdown();
+#endif
 
 	// Stop YM2151
-	if USINGCHIP(FM_YM2151) YM2151Shutdown();
+	if USINGCHIP(FM_YM2151)
+		YM2151Shutdown();
 
 	// Stop SN76489
 	// not needed
@@ -977,7 +1031,10 @@ void stop() {
 // Get track length in ms
 //-----------------------------------------------------------------
 int getlength() {
-	return (int) ((TrackLengthInms+NumLoops*LoopLengthInms)*((PlaybackRate&&FileRate)?(float)FileRate/PlaybackRate:1));
+	int l=(int)((TrackLengthInms+NumLoops*LoopLengthInms)*((PlaybackRate&&FileRate)?(float)FileRate/PlaybackRate:1));
+	if (l>mod.outMod->GetOutputTime())
+		return l;
+	else return -1000;
 }
 
 //-----------------------------------------------------------------
@@ -996,6 +1053,8 @@ void setoutputtime(int time_in_ms) {
 
 	if (InputFile==NULL) return;
 
+	if (getlength()<0) return; // disable seeking on fadeout/silence
+
 	mod.outMod->Pause(1);
 
 	if USINGCHIP(FM_YM2413) {	// If using YM2413, reset it
@@ -1005,7 +1064,11 @@ void setoutputtime(int time_in_ms) {
 	};
 
 	if USINGCHIP(FM_YM2612) {
+#ifdef YM2612GENS
+		YM2612_Reset();
+#else
 		YM2612ResetChip(0);
+#endif
 	};
 
 	if USINGCHIP(FM_YM2151) {
@@ -1324,7 +1387,12 @@ void getfileinfo(char *filename, char *title, int *length_in_ms)
 			sprintf(TrackTitle,"Unsupported version (%x) in %s",VGMHeader.Version,JustFileName);
 		} else {
 			// VGM header OK
-			TrackLength=(long int) ((VGMHeader.TotalLength+NumLoops*VGMHeader.LoopLength)/44.1*((PlaybackRate&&FileRate)?(float)VGMHeader.RecordingRate/PlaybackRate:1));
+			TrackLength=(long int) (
+				(VGMHeader.TotalLength+NumLoops*VGMHeader.LoopLength)
+				/44.1
+				*((PlaybackRate&&FileRate)?(float)VGMHeader.RecordingRate/PlaybackRate:1)
+//				+PauseBetweenTracksms+(VGMHeader.LoopOffset?LoopingFadeOutms:0)
+			);
 
 			if (VGMHeader.GD3Offset>0) {
 				// GD3 tag exists
@@ -1444,6 +1512,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 			unsigned char b1,b2;
 
 			for (x=0;x<samplesinbuffer/2;++x) {
+				if (PauseBetweenTracksCounter==-1) // if not pausing between tracks
 				// Read file, write stuff
 				while (!SamplesTillNextRead) {
 					switch (ReadByte()) {
@@ -1477,11 +1546,20 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						b2=ReadByte();
 						if (FMClock) {
 							if (!USINGCHIP(FM_YM2612)) {
+#ifdef YM2612GENS
+								YM2612_Init(FMClock,SAMPLERATE,0);
+#else
 								YM2612Init(1,FMClock,SAMPLERATE,NULL,NULL);
+#endif
 								FMChips|=FM_YM2612;
 							};
+#ifdef YM2612GENS
+							YM2612_Write(0,b1);
+							YM2612_Write(1,b2);
+#else
 							YM2612Write(0,0,b1);
 							YM2612Write(0,1,b2);
+#endif
 						}
 						break;
 					case 0x53:	// YM2612 write (port 1)
@@ -1489,11 +1567,20 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						b2=ReadByte();
 						if (FMClock) {
 							if (!USINGCHIP(FM_YM2612)) {
+#ifdef YM2612GENS
+								YM2612_Init(FMClock,SAMPLERATE,0);
+#else
 								YM2612Init(1,FMClock,SAMPLERATE,NULL,NULL);
+#endif
 								FMChips|=FM_YM2612;
 							};
+#ifdef YM2612GENS
+							YM2612_Write(2,b1);
+							YM2612_Write(3,b2);
+#else
 							YM2612Write(0,2,b1);
 							YM2612Write(0,3,b2);
+#endif
 						};
 						break;
 					case 0x54:	// BlackAura - YM2151 write
@@ -1534,17 +1621,32 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						break;
 					case 0x66:	// End of data
 						++NumLoopsDone;	// increment loop count
-						// if we've done all the loops needed then finish
-						if ((NumLoopsDone>NumLoops) || (LoopOffset==0)) while (1) {
-							if (SeekToSampleNumber>-1) break;
-							mod.outMod->CanWrite();	// hmm... does something :P
-							if (!mod.outMod->IsPlaying()) {	// if the buffer has run out
-								PostMessage(mod.hMainWindow,WM_WA_MPEG_EOF,0,0);	// tell WA it's EOF
-								return 0;
+						// If there's no looping then go to the inter-track pause
+						if (LoopOffset==0) {
+							if ((PauseBetweenTracksms)&&(PauseBetweenTracksCounter==-1)) {
+								// I want to output silence
+								PauseBetweenTracksCounter=(long)PauseBetweenTracksms*44100/1000;
+								
+							} else {
+								// End track
+								while (1) {
+									if (SeekToSampleNumber>-1) break;
+									mod.outMod->CanWrite();	// hmm... does something :P
+									if (!mod.outMod->IsPlaying()) {	// if the buffer has run out
+										PostMessage(mod.hMainWindow,WM_WA_MPEG_EOF,0,0);	// tell WA it's EOF
+										return 0;
+									}
+									Sleep(10);	// otherwise wait 10ms and try again
+								}
 							}
-							Sleep(10);	// otherwise wait 10ms and try again
-						};
-						// Otherwise, loop the file
+						} else
+						// if there is looping, and the required number of loops have played, then go to fadeout
+						if ((NumLoopsDone>NumLoops)&&(LoopingFadeOutTotal==-1)) {
+							// Start fade out
+							LoopingFadeOutTotal=(long)LoopingFadeOutms*44100/1000;	// number of samples to fade over
+							LoopingFadeOutCounter=LoopingFadeOutTotal;
+						}
+						// Loop the file
 						gzseek(InputFile,LoopOffset,SEEK_SET);
 						break;
 					};	// end case
@@ -1567,7 +1669,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				// Write sample
 				#if NCH == 2
 				// Stereo
-				{
+				if (PauseBetweenTracksCounter==-1) {
 					int NumChipsUsed=0;
 					signed int l=0,r=0;
 
@@ -1588,21 +1690,32 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 
 						// YM2612
 						if USINGCHIP(FM_YM2612) {
-							signed short *mameBuffer[2];
-							signed short mameLeft;
-							signed short mameRight;
+#ifdef YM2612GENS
+							int *Buffer[2];
+							int Left,Right;
+#else						
+							signed short *Buffer[2];
+							signed short Left,Right;
+#endif
 							NumChipsUsed++;
-							mameBuffer[0]=&mameLeft;
-							mameBuffer[1]=&mameRight;
+							Buffer[0]=&Left;
+							Buffer[1]=&Right;
 							if (YM2612Channels==0) {
-								YM2612UpdateOne(0,mameBuffer,1);
-								mameLeft /=YM2612RelativeVol;
-								mameRight/=YM2612RelativeVol;
+#ifdef YM2612GENS				
+								YM2612_Update(Buffer,1);
+								YM2612_DacAndTimers_Update(Buffer,1);
+								Left /=GENSYM2612RelativeVol;
+								Right/=GENSYM2612RelativeVol;
+#else							
+								YM2612UpdateOne(0,Buffer,1);
+								Left /=MAMEYM2612RelativeVol;
+								Right/=MAMEYM2612RelativeVol;
+#endif
 							} else
-								mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
+								Left=Right=0;	// Dodgy muting until per-channel gets done
 						
-							l+=mameLeft;
-							r+=mameRight;
+							l+=Left;
+							r+=Right;
 						};
 
 						// YM2151
@@ -1630,12 +1743,46 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 						r=r*8/NumChipsUsed;
 					};
 
+					if (LoopingFadeOutTotal!=-1) { // Fade out
+						long v;
+						// Check if the counter has finished
+						if (LoopingFadeOutCounter<=0) {
+							// if so, go to pause between tracks
+							PauseBetweenTracksCounter=(long)PauseBetweenTracksms*44100/1000;
+						} else {
+							// Alter volume
+							v=LoopingFadeOutCounter*MAX_VOLUME/LoopingFadeOutTotal;
+							l=(long)l*v/MAX_VOLUME;
+							r=(long)r*v/MAX_VOLUME;
+							// Decrement counter
+							--LoopingFadeOutCounter;
+						}
+					}
+
 					// Clip values
 					if (l>+32767) l=+32767;	else if (l<-32767) l=-32767;
 					if (r>+32767) r=+32767;	else if (r<-32767) r=-32767;
 
 					SampleBuffer[2*x]  =l;
 					SampleBuffer[2*x+1]=r;
+
+				} else {
+					// Pause between tracks
+					// output silence
+					SampleBuffer[2*x]  =0;
+					SampleBuffer[2*x+1]=0;
+					--PauseBetweenTracksCounter;
+					if (PauseBetweenTracksCounter<=0) {
+						while (1) {
+							if (SeekToSampleNumber>-1) break;
+							mod.outMod->CanWrite();	// hmm... does something :P
+							if (!mod.outMod->IsPlaying()) {	// if the buffer has run out
+								PostMessage(mod.hMainWindow,WM_WA_MPEG_EOF,0,0);	// tell WA it's EOF
+								return 0;
+							}
+							Sleep(10);	// otherwise wait 10ms and try again
+						}
+					}
 				};
 				#else
 				// Mono - not working
