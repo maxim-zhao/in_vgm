@@ -35,6 +35,17 @@ BEGIN
                     "Static",SS_LEFTNOWORDWRAP | SS_SUNKEN,2,2,95,30
 END
 
+CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 215, 199
+STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "VGM plugin configuration"
+FONT 8, "Verdana"
+BEGIN
+    DEFPUSHBUTTON   "&OK",IDOK,159,181,52,14
+    ICON            "MAINICON",-1,2,179,20,20
+    PUSHBUTTON      "Help",btnReadMe,100,181,52,14
+    CONTROL         "Tab1",tcMain,"SysTabControl32",WS_TABSTOP,2,4,209,173
+END
+
 FILEINFODIALOGUE DIALOG DISCARDABLE  0, 0, 298, 145
 STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "VGM file & GD3 tag information"
@@ -74,7 +85,7 @@ BEGIN
     EDITTEXT        ebSize,189,49,102,12,ES_AUTOHSCROLL | ES_READONLY
     LTEXT           "&Length",IDC_STATIC,155,62,32,12,SS_CENTERIMAGE
     EDITTEXT        ebLength,189,62,102,12,ES_AUTOHSCROLL | ES_READONLY
-    CONTROL         "&Notes:",IDC_STATIC,"Static",SS_SIMPLE,155,74,32,8
+    LTEXT           "&Notes:",IDC_STATIC,155,74,32,8
     EDITTEXT        ebNotes,155,83,137,38,ES_MULTILINE | ES_READONLY | 
                     WS_VSCROLL
     PUSHBUTTON      "smspower.org/music",btnURL,62,110,85,14
@@ -82,84 +93,210 @@ BEGIN
     PUSHBUTTON      "View GD3 in &browser",btnUnicodeText,62,95,85,14
 END
 
-CONFIGDIALOGUE DIALOG DISCARDABLE  0, 0, 231, 233
+DlgCfgMuting DIALOG DISCARDABLE  0, 0, 200, 160
+STYLE DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
+FONT 8, "Verdana"
+BEGIN
+    CONTROL         "&Immediate update (jerky)",cbMuteImmediate,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,4,4,121,10
+    GROUPBOX        "PSG",gbPSG,4,15,123,33
+    CONTROL         "&Tone channels:",cbPSGToneAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,9,23,64,10
+    CONTROL         "1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,33,
+                    20,10
+    CONTROL         "2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,33,
+                    20,10
+    CONTROL         "3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,51,33,
+                    21,10
+    LTEXT           "&Percussion:",lblPSGPerc,73,23,52,10,SS_CENTERIMAGE
+    CONTROL         "Noise",cbTone4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,73,
+                    33,52,10
+    GROUPBOX        "YM2&413",gbYM2413,4,49,123,73
+    CONTROL         "To&ne channels:",cbYM2413ToneAll,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,9,58,63,10
+    CONTROL         "1",cbYM24131,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,68,
+                    20,10
+    CONTROL         "2",cbYM24132,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,
+                    68,20,10
+    CONTROL         "3",cbYM24133,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,51,
+                    68,21,10
+    CONTROL         "4",cbYM24134,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,78,
+                    20,10
+    CONTROL         "5",cbYM24135,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,
+                    78,20,10
+    CONTROL         "6",cbYM24136,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,51,
+                    78,21,10
+    LTEXT           "Extra tone chs:",lblExtraTone,9,88,63,10,SS_CENTERIMAGE
+    CONTROL         "7",cbYM24137,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,9,98,
+                    20,10
+    CONTROL         "8",cbYM24138,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,30,
+                    98,20,10
+    CONTROL         "9",cbYM24139,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,51,
+                    98,21,10
+    LTEXT           "(if no percussion)",lblExtraToneNote,9,108,63,10,
+                    SS_CENTERIMAGE
+    CONTROL         "Per&cussion:",cbYM2413PercAll,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,73,58,52,10
+    CONTROL         "Hi-hat",cbYM241310,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,73,68,52,10
+    CONTROL         "Cymbal",cbYM241311,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,73,78,52,10
+    CONTROL         "Tom-tom",cbYM241312,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,73,88,52,10
+    CONTROL         "Snare drum",cbYM241313,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,73,98,52,10
+    CONTROL         "Bass drum",cbYM241314,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,73,108,52,10
+    GROUPBOX        "YM261&2",gbYM2612,130,15,66,22
+    CONTROL         "All channels",cbYM2612All,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,136,23,52,10
+    GROUPBOX        "YM2&151",gbYM2151,129,49,67,22
+    CONTROL         "All channels",cbYM2151All,"Button",BS_AUTOCHECKBOX | 
+                    WS_TABSTOP,137,58,52,10
+    CTEXT           "Only affects the current track.\nCheckboxes are only enabled for chips that have been used by the current track.",
+                    IDC_STATIC,5,127,187,28,NOT WS_GROUP
+END
+
+DlgCfgPlayback DIALOGEX 0, 0, 200, 160
+STYLE DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
+FONT 8, "Verdana"
+BEGIN
+    GROUPBOX        "Looping",IDC_STATIC,4,4,102,78
+    LTEXT           "&Repeat looped section:",IDC_STATIC,8,16,75,10,
+                    SS_CENTERIMAGE | NOT WS_GROUP
+    EDITTEXT        ebLoopCount,26,28,27,12,ES_NUMBER
+    LTEXT           "times",IDC_STATIC,55,28,23,12,SS_CENTERIMAGE | NOT 
+                    WS_GROUP
+    CTEXT           "A setting of 0 will play the looped section once before ending the track",
+                    IDC_STATIC,8,53,92,24,NOT WS_GROUP
+    GROUPBOX        "Playback rate",IDC_STATIC,110,4,86,78
+    CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
+                    BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,114,16,60,10
+    CONTROL         "&50Hz",rbRate50,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,114,27,60,10
+    CONTROL         "&60Hz",rbRate60,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,114,38,60,10,WS_EX_TRANSPARENT
+    CONTROL         "Ot&her:",rbRateOther,"Button",BS_AUTORADIOBUTTON | 
+                    WS_TABSTOP,114,49,31,10
+    EDITTEXT        ebPlaybackRate,149,48,22,12,ES_NUMBER | WS_GROUP
+    LTEXT           "Hz",IDC_STATIC,173,48,9,12,SS_CENTERIMAGE | NOT 
+                    WS_GROUP
+    CTEXT           "Takes effect on the next track start",IDC_STATIC,114,61,
+                    77,16,NOT WS_GROUP
+    GROUPBOX        "Quality",IDC_STATIC,4,83,130,68
+    CONTROL         "High &quality YM2413\n(uses more CPU)",cbYM2413HiQ,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,9,
+                    93,120,18
+    CONTROL         "O&verdrive\n(louder, more chance of clipping)",
+                    cbOverDrive,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,9,111,120,18
+    CTEXT           "Affected by muting\n""Immediate update"" checkbox",
+                    IDC_STATIC,9,130,120,17
+END
+
+DlgCfgGD3 DIALOG DISCARDABLE  0, 0, 200, 160
+STYLE DS_SETFOREGROUND | DS_3DLOOK | DS_CONTROL | WS_CHILD | WS_VISIBLE
+FONT 8, "Verdana"
+BEGIN
+    GROUPBOX        "Title &formatting",IDC_STATIC,4,4,192,69
+    EDITTEXT        ebTrackTitle,8,15,92,12,ES_AUTOHSCROLL
+    LTEXT           "Default:  ""%t (%g) - %a""",IDC_STATIC,107,15,84,12,
+                    SS_CENTERIMAGE
+    LTEXT           "%t\tTrack title*\t%a\tTrack author*\n%g\tGame name*\t%d\tGame release date\n%s\tSystem name*\t%c\tFile creator\n\n* use %?j for Japanese text if available",
+                    IDC_STATIC,8,29,182,43,NOT WS_GROUP
+    GROUPBOX        "GD3/HTML display",IDC_STATIC,4,75,192,66
+    CONTROL         "Use &MiniBrowser to display HTML\n(URL links and GD3 tags)",
+                    cbUseMB,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,8,84,121,18
+    CONTROL         "Auto-display &GD3 tags as \nHTML in MiniBrowser",
+                    cbAutoMB,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,8,102,122,18
+    CONTROL         "Open Mini&Browser if it is closed\n(for auto-display only)",
+                    cbForceMBOpen,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,8,120,122,18
+END
+
+CONFIGDIALOGUE1 DIALOG DISCARDABLE  0, 0, 269, 270
 STYLE DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "VGM plugin configuration"
 FONT 8, "Verdana"
 BEGIN
-    DEFPUSHBUTTON   "&OK",IDOK,177,217,52,14
+    DEFPUSHBUTTON   "&OK",IDOK,215,254,52,14
     GROUPBOX        "Looping",IDC_STATIC,2,0,131,25
     LTEXT           "&Repeat looped section",IDC_STATIC,6,9,73,12,
                     SS_CENTERIMAGE | NOT WS_GROUP
     EDITTEXT        ebLoopCount,80,9,27,12,ES_NUMBER
     LTEXT           "times",IDC_STATIC,109,9,21,12,SS_CENTERIMAGE | NOT 
                     WS_GROUP
-    GROUPBOX        "Channel muting",IDC_STATIC,2,27,131,161
-    CTEXT           "Note: only affects the current track; output buffer makes it non-immediate.",
-                    IDC_STATIC,4,37,126,17,NOT WS_GROUP
-    GROUPBOX        "PSG",gbPSG,6,54,123,33
+    GROUPBOX        "Channel muting",IDC_STATIC,2,25,131,177
+    CTEXT           "Only affects the current track\nCheckboxes are only enabled for chips that have been used",
+                    IDC_STATIC,6,175,123,25,NOT WS_GROUP
+    GROUPBOX        "PSG",gbPSG,6,45,123,33
     CONTROL         "&Tone channels:",cbPSGToneAll,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,64,64,10
-    CONTROL         "1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,74,
+                    WS_TABSTOP,11,54,64,10
+    CONTROL         "1",cbTone1,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,64,
                     20,10
-    CONTROL         "2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,74,
+    CONTROL         "2",cbTone2,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,64,
                     20,10
-    CONTROL         "3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,74,
+    CONTROL         "3",cbTone3,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,64,
                     21,10
-    LTEXT           "&Percussion:",lblPSGPerc,75,64,52,10,SS_CENTERIMAGE
+    LTEXT           "&Percussion:",lblPSGPerc,75,54,52,10,SS_CENTERIMAGE
     CONTROL         "Noise",cbTone4,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,75,
-                    74,52,10
-    GROUPBOX        "YM2&413",gbYM2413,6,88,123,73
+                    64,52,10
+    GROUPBOX        "YM2&413",gbYM2413,6,78,123,73
     CONTROL         "To&ne channels:",cbYM2413ToneAll,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,11,98,63,10
+                    BS_AUTOCHECKBOX | WS_TABSTOP,11,87,63,10
     CONTROL         "1",cbYM24131,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
-                    108,20,10
+                    97,20,10
     CONTROL         "2",cbYM24132,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,
-                    108,20,10
+                    97,20,10
     CONTROL         "3",cbYM24133,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,
-                    108,21,10
+                    97,21,10
     CONTROL         "4",cbYM24134,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
-                    118,20,10
+                    107,20,10
     CONTROL         "5",cbYM24135,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,
-                    118,20,10
+                    107,20,10
     CONTROL         "6",cbYM24136,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,
-                    118,21,10
-    LTEXT           "Extra tone chs:",lblExtraTone,11,128,63,10,
+                    107,21,10
+    LTEXT           "Extra tone chs:",lblExtraTone,11,117,63,10,
                     SS_CENTERIMAGE
     CONTROL         "7",cbYM24137,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,11,
-                    138,20,10
+                    127,20,10
     CONTROL         "8",cbYM24138,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,32,
-                    138,20,10
+                    127,20,10
     CONTROL         "9",cbYM24139,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,53,
-                    138,21,10
-    LTEXT           "(if no percussion)",lblExtraToneNote,11,148,63,10,
+                    127,21,10
+    LTEXT           "(if no percussion)",lblExtraToneNote,11,137,63,10,
                     SS_CENTERIMAGE
     CONTROL         "Per&cussion:",cbYM2413PercAll,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,98,52,10
+                    WS_TABSTOP,75,87,52,10
     CONTROL         "Hi-hat",cbYM241310,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,108,52,10
+                    WS_TABSTOP,75,97,52,10
     CONTROL         "Cymbal",cbYM241311,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,118,52,10
+                    WS_TABSTOP,75,107,52,10
     CONTROL         "Tom-tom",cbYM241312,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,128,52,10
+                    WS_TABSTOP,75,117,52,10
     CONTROL         "Snare drum",cbYM241313,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,138,52,10
+                    WS_TABSTOP,75,127,52,10
     CONTROL         "Bass drum",cbYM241314,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,148,52,10
-    GROUPBOX        "YM261&2",gbYM2612,6,161,60,22
+                    WS_TABSTOP,75,137,52,10
+    GROUPBOX        "YM261&2",gbYM2612,6,152,60,22
     CONTROL         "All channels",cbYM2612All,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,11,170,52,10
-    GROUPBOX        "YM2&151",gbYM2151,69,161,60,22
+                    WS_TABSTOP,11,161,52,10
+    GROUPBOX        "YM2&151",gbYM2151,69,152,60,22
     CONTROL         "All channels",cbYM2151All,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,75,170,52,10
-    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,189,131,42
-    CONTROL         "Use &MiniBrowser to display HTML",cbUseMB,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,198,122,10
-    CONTROL         "Auto-display &GD3 in MB/browser",cbAutoMB,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,208,122,10
-    CONTROL         "Open M&B if closed",cbForceMBOpen,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,6,218,122,10
-    GROUPBOX        "Playback rate",IDC_STATIC,136,0,93,74
+                    WS_TABSTOP,75,161,52,10
+    GROUPBOX        "GD3/HTML display",IDC_STATIC,2,203,131,65
+    CONTROL         "Use &MiniBrowser to display HTML (URL links and GD3 tags)",
+                    cbUseMB,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,6,211,122,18
+    CONTROL         "Auto-display &GD3 tags as \nHTML in MiniBrowser",
+                    cbAutoMB,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,6,229,122,18
+    CONTROL         "Open Mini&Browser if it is closed\n(for auto-display only)",
+                    cbForceMBOpen,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,6,247,122,18
+    GROUPBOX        "Playback rate",IDC_STATIC,136,0,131,66
     CONTROL         "R&ecorded rate",rbRateOriginal,"Button",
                     BS_AUTORADIOBUTTON | WS_GROUP | WS_TABSTOP,141,12,62,10
     CONTROL         "&50Hz",rbRate50,"Button",BS_AUTORADIOBUTTON | 
@@ -168,22 +305,28 @@ BEGIN
                     WS_TABSTOP,141,32,32,10
     CONTROL         "Ot&her:",rbRateOther,"Button",BS_AUTORADIOBUTTON | 
                     WS_TABSTOP,141,42,37,10
-    EDITTEXT        ebPlaybackRate,178,41,22,12,ES_AUTOHSCROLL | ES_NUMBER | 
-                    WS_GROUP
+    EDITTEXT        ebPlaybackRate,178,41,22,12,ES_NUMBER | WS_GROUP
     LTEXT           "Hz",IDC_STATIC,202,41,9,12,SS_CENTERIMAGE | NOT 
                     WS_GROUP
-    CTEXT           "Note: takes effect on the next track start",IDC_STATIC,
-                    141,55,80,16,NOT WS_GROUP
-    GROUPBOX        "Track title &display",IDC_STATIC,136,75,93,92
-    EDITTEXT        ebTrackTitle,141,86,81,12,ES_AUTOHSCROLL
-    LTEXT           "%t = Track title*\n%a = Track author*\n%g = Game name*\n%d = Game release date\n%s = System name*\n%c = File creator\n* use %?j for\n   Japanese text",
-                    IDC_STATIC,141,99,83,64,NOT WS_GROUP
-    ICON            "MAINICON",IDC_STATIC,136,211,20,20
-    GROUPBOX        "Quality",IDC_STATIC,136,168,93,33
-    CONTROL         "High &quality YM2413",cbYM2413HiQ,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,141,178,82,10
-    CONTROL         "O&verdrive",cbOverDrive,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,141,188,82,10
+    CTEXT           "Takes effect on the next track start",IDC_STATIC,141,55,
+                    120,8,NOT WS_GROUP
+    GROUPBOX        "Track title &display",IDC_STATIC,136,66,131,84
+    EDITTEXT        ebTrackTitle,141,77,120,12,ES_AUTOHSCROLL
+    LTEXT           "%t\tTrack title*\n%a\tTrack author*\n%g\tGame name*\n%d\tGame release date\n%s\tSystem name*\n%c\tFile creator\n* use %?j for Japanese text",
+                    IDC_STATIC,141,90,120,56,NOT WS_GROUP
+    ICON            "MAINICON",IDC_STATIC,136,248,20,20
+    GROUPBOX        "Quality",IDC_STATIC,136,150,131,68
+    CONTROL         "High &quality YM2413\n(uses more CPU)",cbYM2413HiQ,
+                    "Button",BS_AUTOCHECKBOX | BS_MULTILINE | WS_TABSTOP,141,
+                    160,120,18
+    CONTROL         "O&verdrive\n(louder, more chance of clipping)",
+                    cbOverDrive,"Button",BS_AUTOCHECKBOX | BS_MULTILINE | 
+                    WS_TABSTOP,141,178,120,18
+    CONTROL         "&Immediate update (jerky)",cbMuteImmediate,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,35,121,10
+    CTEXT           "Affected by channel muting ""Immediate update"" checkbox",
+                    IDC_STATIC,141,197,120,17
+    PUSHBUTTON      "Help",btnReadMe,159,254,52,14
 END
 
 
@@ -203,6 +346,12 @@ BEGIN
         BOTTOMMARGIN, 32
     END
 
+    "CONFIGDIALOGUE", DIALOG
+    BEGIN
+        LEFTMARGIN, 2
+        RIGHTMARGIN, 211
+    END
+
     "FILEINFODIALOGUE", DIALOG
     BEGIN
         LEFTMARGIN, 2
@@ -215,10 +364,34 @@ BEGIN
         BOTTOMMARGIN, 143
     END
 
-    "CONFIGDIALOGUE", DIALOG
+    DlgCfgMuting, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 196
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 156
+    END
+
+    DlgCfgPlayback, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 196
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 156
+    END
+
+    DlgCfgGD3, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 196
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 156
+    END
+
+    "CONFIGDIALOGUE1", DIALOG
     BEGIN
         LEFTMARGIN, 2
-        RIGHTMARGIN, 229
+        RIGHTMARGIN, 267
         VERTGUIDE, 6
         VERTGUIDE, 11
         VERTGUIDE, 32
@@ -227,7 +400,7 @@ BEGIN
         VERTGUIDE, 133
         VERTGUIDE, 136
         VERTGUIDE, 141
-        BOTTOMMARGIN, 231
+        BOTTOMMARGIN, 268
     END
 END
 #endif    // APSTUDIO_INVOKED

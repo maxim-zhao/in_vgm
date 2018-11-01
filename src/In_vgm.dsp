@@ -145,6 +145,10 @@ SOURCE=.\out.h
 # PROP Default_Filter "ico;cur;bmp;dlg;rc2;rct;bin;cnt;rtf;gif;jpg;jpeg;jpe"
 # Begin Source File
 
+SOURCE=.\Image1.bmp
+# End Source File
+# Begin Source File
+
 SOURCE=.\mainicon.ico
 # End Source File
 # Begin Source File

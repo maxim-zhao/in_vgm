@@ -6,12 +6,13 @@
 // with help from BlackAura in March and April 2002
 //-----------------------------------------------------------------
 
-// PSG volume reduced to match FM emulators
-#define YM2413toPSG 0.5	// SMS/Mark III with FM pack - empirical value, real output would help
-#define YM2612toPSG 0.5	// Mega Drive/Genesis
-//#define YM2151toXXX 0.5
+// Relative volumes of sound cores
+// PSG = 1
+#define YM2413RelativeVol 1	// SMS/Mark III with FM pack - empirical value, real output would help
+#define YM2612RelativeVol 3	// Mega Drive/Genesis
+#define YM2151RelativeVol 4 // CPS1
 
-#define PLUGINNAME "VGM input plugin v0.27"
+#define PLUGINNAME "VGM input plugin v0.28 beta"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
@@ -38,6 +39,7 @@
 #include "zlib.h"
 #include "resource.h"
 #include "urlmon.h"
+#include "commctrl.h"
 
 // BlackAura - MAME FM synthesiser (aargh!)
 #include "mame_fm.h"
@@ -47,9 +49,12 @@
 
 typedef unsigned short wchar;	// For Unicode strings
 
+HANDLE PluginhInst;
+
 // avoid CRT. Evil. Big. Bloated.
 BOOL WINAPI _DllMainCRTStartup(HANDLE hInst, ULONG ul_reason_for_call, LPVOID lpReserved)
 {
+	PluginhInst=hInst;
 	return TRUE;
 }
 
@@ -104,6 +109,11 @@ HANDLE thread_handle=INVALID_HANDLE_VALUE;	// the handle to the decode thread
 
 DWORD WINAPI __stdcall DecodeThread(void *b); // the decode thread procedure
 
+// forward references
+void setoutputtime(int time_in_ms);
+int  getoutputtime();
+
+
 int
 	TrackLengthInms,	// Current track length in ms
 	PlaybackRate,	// in Hz
@@ -121,7 +131,8 @@ int
 	AutoMB,			// Whether to automatically show HTML in MB
 	ForceMBOpen,	// Whether to force the MB to open if closed when doing AutoMB
 	YM2413HiQ,
-	Overdrive;
+	Overdrive,
+	ImmediateUpdate;
 long int 
 	YM2413Channels=YM2413MUTE_ALLON,	// backup when stopped. PSG does it itself.
 	YM2612Channels=YM2612MUTE_ALLON,
@@ -289,79 +300,143 @@ void InfoInBrowser(char *filename, int ForceOpen) {
 //-----------------------------------------------------------------
 // Configuration dialogue
 //-----------------------------------------------------------------
+#define NumCfgTabChildWnds 3
+HWND CfgTabChildWnds[NumCfgTabChildWnds];	// Holds child windows' HWnds
+// Defines to make it easier to place stuff where I want
+#define CfgPlayback	CfgTabChildWnds[0]
+#define CfgMuting	CfgTabChildWnds[1]
+#define CfgGD3		CfgTabChildWnds[2]
+// Dialogue box tabseet handler
+BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam);
+void MakeTabbedDialogue(HWND hWndMain) {
+	// Variables
+	TC_ITEM NewTab;
+	HWND TabCtrlWnd=GetDlgItem(hWndMain,tcMain);
+	RECT TabDisplayRect,TabRect;
+	int i;
+	// Add tabs
+	NewTab.mask=TCIF_TEXT;
+	NewTab.pszText="Playback";
+	TabCtrl_InsertItem(TabCtrlWnd,0,&NewTab);
+	NewTab.pszText="Muting";
+	TabCtrl_InsertItem(TabCtrlWnd,1,&NewTab);
+	NewTab.pszText="Title / GD3";
+	TabCtrl_InsertItem(TabCtrlWnd,2,&NewTab);
+	// Get display rect
+	GetWindowRect(TabCtrlWnd,&TabDisplayRect);
+	GetWindowRect(hWndMain,&TabRect);
+	OffsetRect(&TabDisplayRect,-TabRect.left-GetSystemMetrics(SM_CXDLGFRAME),-TabRect.top-GetSystemMetrics(SM_CYDLGFRAME)-GetSystemMetrics(SM_CYCAPTION));
+	TabCtrl_AdjustRect(TabCtrlWnd,FALSE,&TabDisplayRect);
+	
+	// Create child windows (resource hog, I don't care)
+	CfgPlayback	=CreateDialog(PluginhInst,(LPCTSTR) DlgCfgPlayback,	hWndMain,ConfigDialogProc);
+	CfgMuting	=CreateDialog(PluginhInst,(LPCTSTR) DlgCfgMuting,	hWndMain,ConfigDialogProc);
+	CfgGD3		=CreateDialog(PluginhInst,(LPCTSTR) DlgCfgGD3,		hWndMain,ConfigDialogProc);
+	// Enable WinXP styles
+	{
+		HINSTANCE dllinst=LoadLibrary("uxtheme.dll");
+		if (dllinst) {
+			FARPROC //IsThemeActive				=GetProcAddress(dllinst,"IsThemeActive"),
+//					IsAppThemed					=GetProcAddress(dllinst,"IsAppThemed"),
+					EnableThemeDialogTexture	=GetProcAddress(dllinst,"EnableThemeDialogTexture"),
+					GetThemeAppProperties		=GetProcAddress(dllinst,"GetThemeAppProperties"),
+					IsThemeDialogTextureEnabled =GetProcAddress(dllinst,"IsThemeDialogTextureEnabled");
+			// I try to test if the app is in a themed XP but without a manifest to allow control theming, but the one which
+			// should tell me (GetThemeAppProperties) returns STAP_ALLOW_CONTROLS||STAP_ALLOW_NONCLIENT when it should only return
+			// STAP_ALLOW_NONCLIENT (as I understand it). None of the other functions help either :(
+			if (
+				(IsThemeDialogTextureEnabled)&&(EnableThemeDialogTexture)&& // All functions found
+				(IsThemeDialogTextureEnabled(hWndMain))) { // and app is themed
+				for (i=0;i<NumCfgTabChildWnds;++i) EnableThemeDialogTexture(CfgTabChildWnds[i],6); // then draw pages with theme texture
+			};
+			FreeLibrary(dllinst);
+		};
+	};
+
+	// Put them in the right place, and hide them
+	for (i=0;i<NumCfgTabChildWnds;++i) 
+		SetWindowPos(CfgTabChildWnds[i],HWND_TOP,TabDisplayRect.left,TabDisplayRect.top,TabDisplayRect.right-TabDisplayRect.left,TabDisplayRect.bottom-TabDisplayRect.top,SWP_HIDEWINDOW);
+	// Show the first one, though
+	SetWindowPos(CfgTabChildWnds[0],HWND_TOP,0,0,0,0,SWP_NOSIZE|SWP_NOMOVE|SWP_SHOWWINDOW);
+};
+
 // Dialogue box callback function
 BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam) {
     switch (wMessage) {	// process messages
 		case WM_INITDIALOG:	{// Initialise dialogue
 			int i;
+			if (GetWindowLong(DlgWin,GWL_STYLE)&WS_CHILD) return FALSE;
+			MakeTabbedDialogue(DlgWin);
 			if (PSGClock) { // Check PSG channel checkboxes
-				for (i=0;i<4;i++) CheckDlgButton(DlgWin,cbTone1+i,((PSGMute & (1<<i))>0));
-				CheckDlgButton(DlgWin,cbPSGToneAll,((PSGMute&0x7)==0x7));
+				for (i=0;i<4;i++) CheckDlgButton(CfgMuting,cbTone1+i,((PSGMute & (1<<i))>0));
+				CheckDlgButton(CfgMuting,cbPSGToneAll,((PSGMute&0x7)==0x7));
 			} else {	// or disable them
-				for (i=0;i<4;i++) EnableWindow(GetDlgItem(DlgWin,cbTone1+i),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,cbPSGToneAll),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,lblPSGPerc),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,gbPSG),FALSE);
+				for (i=0;i<4;i++) EnableWindow(GetDlgItem(CfgMuting,cbTone1+i),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,cbPSGToneAll),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,lblPSGPerc),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,gbPSG),FALSE);
 			};
 			if USINGCHIP(FM_YM2413) {	// Check YM2413 FM channel checkboxes
-				for (i=0;i<15;i++) CheckDlgButton(DlgWin,cbYM24131+i,!((YM2413Channels & (1<<i))>0));
-				CheckDlgButton(DlgWin,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
-				CheckDlgButton(DlgWin,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
+				for (i=0;i<15;i++) CheckDlgButton(CfgMuting,cbYM24131+i,!((YM2413Channels & (1<<i))>0));
+				CheckDlgButton(CfgMuting,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
+				CheckDlgButton(CfgMuting,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
 			} else {
-				for (i=0;i<15;i++) EnableWindow(GetDlgItem(DlgWin,cbYM24131+i),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,cbYM2413ToneAll),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,cbYM2413PercAll),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,lblExtraTone),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,lblExtraToneNote),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,gbYM2413),FALSE);
+				for (i=0;i<15;i++) EnableWindow(GetDlgItem(CfgMuting,cbYM24131+i),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,cbYM2413ToneAll),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,cbYM2413PercAll),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,lblExtraTone),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,lblExtraToneNote),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,gbYM2413),FALSE);
 			};
 			if USINGCHIP(FM_YM2612) {	// Check YM2612 FM channel checkboxes
-				CheckDlgButton(DlgWin,cbYM2612All,(YM2612Channels==0));
+				CheckDlgButton(CfgMuting,cbYM2612All,(YM2612Channels==0));
 			} else {
-				EnableWindow(GetDlgItem(DlgWin,cbYM2612All),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,gbYM2612),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,cbYM2612All),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,gbYM2612),FALSE);
 			};
 			if USINGCHIP(FM_YM2151) {	// Check YM2151 FM channel checkboxes
-				CheckDlgButton(DlgWin,cbYM2151All,(YM2151Channels==0));
+				CheckDlgButton(CfgMuting,cbYM2151All,(YM2151Channels==0));
 			} else {
-				EnableWindow(GetDlgItem(DlgWin,cbYM2151All),FALSE);
-				EnableWindow(GetDlgItem(DlgWin,gbYM2151),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,cbYM2151All),FALSE);
+				EnableWindow(GetDlgItem(CfgMuting,gbYM2151),FALSE);
 			};
+			// Immediate update checkbox
+			CheckDlgButton(CfgMuting,cbMuteImmediate,ImmediateUpdate);
 			// Set loop count
-			SetDlgItemInt(DlgWin,ebLoopCount,NumLoops,TRUE);
+			SetDlgItemInt(CfgPlayback,ebLoopCount,NumLoops,TRUE);
 			// Set title format text
-			SetDlgItemText(DlgWin,ebTrackTitle,TrackTitleFormat);
+			SetDlgItemText(CfgGD3,ebTrackTitle,TrackTitleFormat);
 			// Speed settings
 			switch (PlaybackRate) {
 				case 0:
-					CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRateOriginal);
+					CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRateOriginal);
 					break;
 				case 50:
-					CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRate50);
+					CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRate50);
 					break;
 				case 60:
-					CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRate60);
+					CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRate60);
 					break;
 				default:
-					CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,rbRateOther);
+					CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,rbRateOther);
 					break;
 			};
-			EnableWindow(GetDlgItem(DlgWin,ebPlaybackRate),(IsDlgButtonChecked(DlgWin,rbRateOther)?TRUE:FALSE));
+			EnableWindow(GetDlgItem(CfgPlayback,ebPlaybackRate),(IsDlgButtonChecked(CfgPlayback,rbRateOther)?TRUE:FALSE));
 			if (PlaybackRate!=0) {
 				char tempstr[18];	// buffer for itoa
-				SetDlgItemText(DlgWin,ebPlaybackRate,itoa(PlaybackRate,tempstr,10));
+				SetDlgItemText(CfgPlayback,ebPlaybackRate,itoa(PlaybackRate,tempstr,10));
 			} else {
-				SetDlgItemText(DlgWin,ebPlaybackRate,"60");
+				SetDlgItemText(CfgPlayback,ebPlaybackRate,"60");
 			};
 			// MB settings
-			CheckDlgButton(DlgWin,cbUseMB        ,UseMB);
-			CheckDlgButton(DlgWin,cbAutoMB       ,AutoMB);
-			CheckDlgButton(DlgWin,cbForceMBOpen  ,ForceMBOpen);
-			EnableWindow(GetDlgItem(DlgWin,cbAutoMB     ),UseMB);
-			EnableWindow(GetDlgItem(DlgWin,cbForceMBOpen),UseMB & AutoMB);
+			CheckDlgButton(CfgGD3,cbUseMB        ,UseMB);
+			CheckDlgButton(CfgGD3,cbAutoMB       ,AutoMB);
+			CheckDlgButton(CfgGD3,cbForceMBOpen  ,ForceMBOpen);
+			EnableWindow(GetDlgItem(CfgGD3,cbAutoMB     ),UseMB);
+			EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
 			// Quality settings
-			CheckDlgButton(DlgWin,cbYM2413HiQ	 ,YM2413HiQ);
-			CheckDlgButton(DlgWin,cbOverDrive	 ,Overdrive);
+			CheckDlgButton(CfgPlayback,cbYM2413HiQ	 ,YM2413HiQ);
+			CheckDlgButton(CfgPlayback,cbOverDrive	 ,Overdrive);
 
 			return (TRUE);
 		};
@@ -371,41 +446,44 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					int i;
 					BOOL MyBool;
 					// Loop count
-					i=GetDlgItemInt(DlgWin,ebLoopCount,&MyBool,TRUE);
+					i=GetDlgItemInt(CfgPlayback,ebLoopCount,&MyBool,TRUE);
 					if (MyBool) NumLoops=i;
 					// Track title format
-					GetDlgItemText(DlgWin,ebTrackTitle,TrackTitleFormat,100);
+					GetDlgItemText(CfgGD3,ebTrackTitle,TrackTitleFormat,100);
 					// Playback rate
 					PlaybackRate=0;
-					if (IsDlgButtonChecked(DlgWin,rbRate50)) {
+					if (IsDlgButtonChecked(CfgPlayback,rbRate50)) {
 						PlaybackRate=50;
-					} else if (IsDlgButtonChecked(DlgWin,rbRate60)) {
+					} else if (IsDlgButtonChecked(CfgPlayback,rbRate60)) {
 						PlaybackRate=60;
-					} else if (IsDlgButtonChecked(DlgWin,rbRateOther)) {
-						i=GetDlgItemInt(DlgWin,ebPlaybackRate,&MyBool,TRUE);
+					} else if (IsDlgButtonChecked(CfgPlayback,rbRateOther)) {
+						i=GetDlgItemInt(CfgPlayback,ebPlaybackRate,&MyBool,TRUE);
 						if ((MyBool) && (i>0) && (i<500)) PlaybackRate=i;
 					};
-				};	// fall through to close dialogue
-                case IDCANCEL:	// [X] button, Alt+F4, etc
+				};
                     EndDialog(DlgWin,0);
+                    return (TRUE) ;
+                case IDCANCEL:	// [X] button, Alt+F4, etc
+                    EndDialog(DlgWin,1);
                     return (TRUE) ;
 				case cbTone1:
 				case cbTone2:
 				case cbTone3:
 				case cbTone4:
-					PSGMute=(IsDlgButtonChecked(DlgWin,cbTone1)     )
-                          | (IsDlgButtonChecked(DlgWin,cbTone2) << 1)
-                          | (IsDlgButtonChecked(DlgWin,cbTone3) << 2)
-                          | (IsDlgButtonChecked(DlgWin,cbTone4) << 3);
-					CheckDlgButton(DlgWin,cbPSGToneAll,((PSGMute&7)==7));
+					PSGMute=(IsDlgButtonChecked(CfgMuting,cbTone1)     )
+                          | (IsDlgButtonChecked(CfgMuting,cbTone2) << 1)
+                          | (IsDlgButtonChecked(CfgMuting,cbTone3) << 2)
+                          | (IsDlgButtonChecked(CfgMuting,cbTone4) << 3);
+					CheckDlgButton(CfgMuting,cbPSGToneAll,((PSGMute&7)==7));
+					if (ImmediateUpdate) setoutputtime(getoutputtime());
 					break;
 				case rbRateOriginal:
 				case rbRate50:
 				case rbRate60:
 				case rbRateOther:
-					CheckRadioButton(DlgWin,rbRateOriginal,rbRateOther,LOWORD(wParam));
-					EnableWindow(GetDlgItem(DlgWin,ebPlaybackRate),((LOWORD(wParam)==rbRateOther)?TRUE:FALSE));
-					if (LOWORD(wParam)==rbRateOther) SetFocus(GetDlgItem(DlgWin,ebPlaybackRate));
+					CheckRadioButton(CfgPlayback,rbRateOriginal,rbRateOther,LOWORD(wParam));
+					EnableWindow(GetDlgItem(CfgPlayback,ebPlaybackRate),((LOWORD(wParam)==rbRateOther)?TRUE:FALSE));
+					if (LOWORD(wParam)==rbRateOther) SetFocus(GetDlgItem(CfgPlayback,ebPlaybackRate));
 					break;
 				case cbYM24131:		case cbYM24132:		case cbYM24133:		case cbYM24134:
 				case cbYM24135:		case cbYM24136:		case cbYM24137:		case cbYM24138:
@@ -413,60 +491,101 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				case cbYM241313:	case cbYM241314: {
 					int i;
 					YM2413Channels=0;
-					for (i=0;i<15;i++) YM2413Channels|=(!IsDlgButtonChecked(DlgWin,cbYM24131+i))<<i;
-					if USINGCHIP(FM_YM2413) OPLL_setMask(opll,YM2413Channels);
-					CheckDlgButton(DlgWin,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
-					CheckDlgButton(DlgWin,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
+					for (i=0;i<15;i++) YM2413Channels|=(!IsDlgButtonChecked(CfgMuting,cbYM24131+i))<<i;
+					if USINGCHIP(FM_YM2413) {
+						OPLL_setMask(opll,YM2413Channels);
+						if (ImmediateUpdate) setoutputtime(getoutputtime());
+					}
+					CheckDlgButton(CfgMuting,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
+					CheckDlgButton(CfgMuting,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
 					break;
 				};
 				case cbYM2413ToneAll: {
 					int i;
-					const int Checked=IsDlgButtonChecked(DlgWin,cbYM2413ToneAll);
-					for (i=0;i<9;i++) CheckDlgButton(DlgWin,cbYM24131+i,Checked);
-					PostMessage(DlgWin,WM_COMMAND,cbYM24131,0);
+					const int Checked=IsDlgButtonChecked(CfgMuting,cbYM2413ToneAll);
+					for (i=0;i<9;i++) CheckDlgButton(CfgMuting,cbYM24131+i,Checked);
+					PostMessage(CfgMuting,WM_COMMAND,cbYM24131,0);
 					break;
 				};
 				case cbYM2413PercAll: {
 					int i;
-					const int Checked=IsDlgButtonChecked(DlgWin,cbYM2413PercAll);
-					for (i=0;i<5;i++) CheckDlgButton(DlgWin,cbYM241310+i,Checked);
-					PostMessage(DlgWin,WM_COMMAND,cbYM24131,0);
+					const int Checked=IsDlgButtonChecked(CfgMuting,cbYM2413PercAll);
+					for (i=0;i<5;i++) CheckDlgButton(CfgMuting,cbYM241310+i,Checked);
+					PostMessage(CfgMuting,WM_COMMAND,cbYM24131,0);
 					break;
 				};
 				case cbPSGToneAll: {
 					int i;
-					const int Checked=IsDlgButtonChecked(DlgWin,cbPSGToneAll);
-					for (i=0;i<3;i++) CheckDlgButton(DlgWin,cbTone1+i,Checked);
-					PostMessage(DlgWin,WM_COMMAND,cbTone1,0);
+					const int Checked=IsDlgButtonChecked(CfgMuting,cbPSGToneAll);
+					for (i=0;i<3;i++) CheckDlgButton(CfgMuting,cbTone1+i,Checked);
+					PostMessage(CfgMuting,WM_COMMAND,cbTone1,0);
 					break;
 				};
 				case cbUseMB:
-					UseMB=IsDlgButtonChecked(DlgWin,cbUseMB);
-					EnableWindow(GetDlgItem(DlgWin,cbAutoMB     ),UseMB);
-					EnableWindow(GetDlgItem(DlgWin,cbForceMBOpen),UseMB & AutoMB);
+					UseMB=IsDlgButtonChecked(CfgGD3,cbUseMB);
+					EnableWindow(GetDlgItem(CfgGD3,cbAutoMB     ),UseMB);
+					EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
 					break;
 				case cbAutoMB:
-					AutoMB=IsDlgButtonChecked(DlgWin,cbAutoMB);
-					EnableWindow(GetDlgItem(DlgWin,cbForceMBOpen),UseMB & AutoMB);
+					AutoMB=IsDlgButtonChecked(CfgGD3,cbAutoMB);
+					EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
 					break;
 				case cbForceMBOpen:
-					ForceMBOpen=IsDlgButtonChecked(DlgWin,cbForceMBOpen);
+					ForceMBOpen=IsDlgButtonChecked(CfgGD3,cbForceMBOpen);
 					break;
 				case cbYM2612All:
-					YM2612Channels=!IsDlgButtonChecked(DlgWin,cbYM2612All);
+					YM2612Channels=!IsDlgButtonChecked(CfgMuting,cbYM2612All);
+					if (ImmediateUpdate) setoutputtime(getoutputtime());
 					break;
 				case cbYM2151All:
-					YM2151Channels=!IsDlgButtonChecked(DlgWin,cbYM2151All);
+					YM2151Channels=!IsDlgButtonChecked(CfgMuting,cbYM2151All);
+					if (ImmediateUpdate) setoutputtime(getoutputtime());
 					break;
 				case cbYM2413HiQ:
-					YM2413HiQ=IsDlgButtonChecked(DlgWin,cbYM2413HiQ);
-					if USINGCHIP(FM_YM2413) OPLL_set_quality(opll,YM2413HiQ);
+					YM2413HiQ=IsDlgButtonChecked(CfgPlayback,cbYM2413HiQ);
+					if USINGCHIP(FM_YM2413) {
+						OPLL_set_quality(opll,YM2413HiQ);
+						if (ImmediateUpdate) setoutputtime(getoutputtime());
+					}
 					break;
 				case cbOverDrive:
-					Overdrive=IsDlgButtonChecked(DlgWin,cbOverDrive);
+					Overdrive=IsDlgButtonChecked(CfgPlayback,cbOverDrive);
+					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					break;
+				case cbMuteImmediate:
+					ImmediateUpdate=IsDlgButtonChecked(CfgMuting,cbMuteImmediate);
+					break;
+				case btnReadMe:
+					{
+						char FileName[MAX_PATH];
+						char *PChar;
+						GetModuleFileName(PluginhInst,FileName,MAX_PATH);	// get *dll* path
+						GetFullPathName(FileName,MAX_PATH,FileName,&PChar);	// make it fully qualified plus find the filename bit
+						strcpy(PChar,"in_vgm.txt");	// Change to plugin.ini
+						if ((int)ShellExecute(mod.hMainWindow,NULL,FileName,NULL,NULL,SW_SHOWNORMAL)<=32)
+							MessageBox(DlgWin,"Error opening in_vgm.txt from plugin folder",mod.description,MB_ICONERROR+MB_OK);
+					}
 					break;
             };
             break ;
+		case WM_NOTIFY:
+            switch (LOWORD(wParam)) {
+				case tcMain:
+					switch (((LPNMHDR)lParam)->code) {
+					case TCN_SELCHANGING:	// hide current window
+						SetWindowPos(CfgTabChildWnds[TabCtrl_GetCurSel(GetDlgItem(DlgWin,tcMain))],HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_HIDEWINDOW);
+						break;
+					case TCN_SELCHANGE:	// show current window
+						{
+							int i=TabCtrl_GetCurSel(GetDlgItem(DlgWin,tcMain));
+							SetWindowPos(CfgTabChildWnds[i],HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW);
+							SetFocus(CfgTabChildWnds[i]);
+						};
+						break;
+					};
+					break;
+			}
+			return TRUE;
     }
     return (FALSE) ;    // return FALSE to signify message not processed
 };
@@ -495,10 +614,10 @@ void about(HWND hwndParent)
 		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial\n"
 		"project and as such it is permanently in beta.\n\n"
 		"Thanks go to:\n"
-		"Mitsutaka Okazaki, BlackAura, Bock, Heliophobe, Mike G, Steve Snake,\n"
-		"Dave, Charles MacDonald, Ville Helin, John Kortink, fx^\n\n"
+		"Mitsutaka Okazaki, Tatsuyuki Satoh, BlackAura, Bock, Heliophobe, Mike G,\n"
+		"Steve Snake, Dave, Charles MacDonald, Ville Helin, John Kortink, fx^\n\n"
 		"   ...and Zhao Yuehua xxx wo ai ni"
-		,PLUGINNAME,MB_OK);
+		,mod.description,MB_OK);
 }
 
 //-----------------------------------------------------------------
@@ -525,6 +644,7 @@ void init() {
 	ForceMBOpen     =GetPrivateProfileInt(INISECTION,"Force MB open"       ,0,INIFileName);
 	YM2413HiQ       =GetPrivateProfileInt(INISECTION,"High quality YM2413" ,0,INIFileName);
 	Overdrive       =GetPrivateProfileInt(INISECTION,"Overdrive"           ,1,INIFileName);
+	ImmediateUpdate =GetPrivateProfileInt(INISECTION,"Immediate update"    ,1,INIFileName);
 
 	GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
 
@@ -552,6 +672,7 @@ void quit() {
 	WritePrivateProfileString(INISECTION,"Force MB open"       ,itoa(ForceMBOpen     ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"High quality YM2413" ,itoa(YM2413HiQ       ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Overdrive"           ,itoa(Overdrive       ,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Immediate update"    ,itoa(ImmediateUpdate ,tempstr,10),INIFileName);
 
 	DeleteFile(TextFileName);
 };
@@ -584,7 +705,7 @@ BOOL CALLBACK DownloadDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
                 case IDCANCEL:	// [X] button, Alt+F4, etc
-                    EndDialog(DlgWin,0);
+                    EndDialog(DlgWin,1);
                     return (TRUE) ;
   			};
     };
@@ -809,7 +930,7 @@ void stop() {
 	if (thread_handle != INVALID_HANDLE_VALUE) {	// If the playback thread is going
 		killDecodeThread=1;	// Set the flag telling it to stop
 		if (WaitForSingleObject(thread_handle,INFINITE) == WAIT_TIMEOUT) {
-			MessageBox(mod.hMainWindow,"error asking thread to die!","error killing decode thread",0);
+			MessageBox(mod.hMainWindow,"error asking thread to die!",mod.description,0);
 			TerminateThread(thread_handle,0);
 		}
 		CloseHandle(thread_handle);
@@ -828,7 +949,7 @@ void stop() {
 	if USINGCHIP(FM_YM2413) OPLL_delete(opll);
 
 	// Stop YM2612
-	if USINGCHIP(FM_YM2413) YM2612Shutdown();
+	if USINGCHIP(FM_YM2612) YM2612Shutdown();
 
 	// Stop YM2151
 	if USINGCHIP(FM_YM2151) YM2151Shutdown();
@@ -855,7 +976,7 @@ int getoutputtime() {
 // Seek
 //-----------------------------------------------------------------
 void setoutputtime(int time_in_ms) {
-	int IntroLengthInms=TrackLengthInms-LoopLengthInms;
+//	int IntroLengthInms=TrackLengthInms-LoopLengthInms;
 	long int YM2413Channels;
 
 	if (InputFile==NULL) return;
@@ -872,20 +993,42 @@ void setoutputtime(int time_in_ms) {
 		YM2612ResetChip(0);
 	};
 
-	if ((LoopLengthInms>0) &&	// file is looped
-		(time_in_ms>IntroLengthInms)) {	// seek is past loop point
-			gzseek(InputFile,LoopOffset,SEEK_SET);
-			NumLoopsDone=(time_in_ms-IntroLengthInms)/LoopLengthInms;
-			SeekToSampleNumber=(int)((time_in_ms-IntroLengthInms-NumLoopsDone*LoopLengthInms)*44.1);
-	} else {	// file is not looped
-		gzseek(InputFile,0x40,SEEK_SET);
-		NumLoopsDone=0;
+	if USINGCHIP(FM_YM2151) {
+		YM2151ResetChip(0);
+	};
+
+	gzseek(InputFile,0x40,SEEK_SET);
+	NumLoopsDone=0;
+
+	if (LoopLengthInms>0) {	// file is looped
+		// See if I can skip some loops
+		while (time_in_ms>TrackLengthInms) {
+			++NumLoopsDone;
+			time_in_ms-=LoopLengthInms;
+		};
 		SeekToSampleNumber=(int)(time_in_ms*44.1);
+		mod.outMod->Flush(time_in_ms+NumLoopsDone*LoopLengthInms);
+	} else {				// Not looped
+		SeekToSampleNumber=(int)(time_in_ms*44.1);
+		mod.outMod->Flush(time_in_ms);
+
+		if (time_in_ms>TrackLengthInms) NumLoopsDone=NumLoops+1; // for seek-past-eof in non-looped files
+	};
+
+	// If seeking beyond EOF...
+	if (NumLoopsDone>NumLoops) {
+		// Tell Winamp it's the end of the file
+		while (1) {
+			mod.outMod->CanWrite();	// hmm... does something :P
+			if (!mod.outMod->IsPlaying()) {	// if the buffer has run out
+				PostMessage(mod.hMainWindow,WM_WA_MPEG_EOF,0,0);	// tell WA it's EOF
+				return;
+			}
+			Sleep(10);	// otherwise wait 10ms and try again
+		};
 	};
 
 	if (!paused) mod.outMod->Pause(0);
-
-	mod.outMod->Flush(time_in_ms);
 }
 
 //-----------------------------------------------------------------
@@ -906,7 +1049,7 @@ void setpan(int pan) {
 // File info dialogue
 //-----------------------------------------------------------------
 // Dialogue box callback function
-char GD3Strings[11][256];
+wchar GD3Strings[11][1024*2];
 BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lParam) {
 	const int DlgFields[11]={ebTitle,ebTitle,ebName,ebName,ebSystem,ebSystem,ebAuthor,ebAuthor,ebDate,ebCreator,ebNotes};
     switch (wMessage) {	// process messages
@@ -951,7 +1094,7 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
 				SetDlgItemText(DlgWin,ebSize,tempstr);
 			};
 
-			for (i=0;i<11;++i) GD3Strings[i][0]='\0';	// clear strings
+			for (i=0;i<11;++i) GD3Strings[i][0]=L'\0';	// clear strings
 
 			fh=gzopen(FilenameForInfoDlg,"rb");
 			if (fh==0) {	// file not opened
@@ -1021,31 +1164,33 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
 							GD3string=p;
 
 							for (i=0;i<11;++i) {
-								// Get next string and move the pointer to the next one
-								WideCharToMultiByte(CP_ACP,0,GD3string,-1,GD3Strings[i],256,NULL,NULL);
-//								wcstombs(GD3Strings[i],GD3string,256);
+								wcscpy(GD3Strings[i],GD3string);
 								GD3string+=wcslen(GD3string)+1;
 							};
 
-							{	// Make Notes text break properly by making \n into \r\n
-								char tempstr[512];
-								char *p=tempstr+strlen(GD3Strings[10]);
-								strcpy(tempstr,GD3Strings[10]);
-								while (p>=tempstr) {
-									if (*p=='\n') {
-										memmove(p+1,p,strlen(p)+1);
-										*p='\r';										
+							// special handling for any strings?
+							// Notes: change \n to \r\n so Windows shows it properly
+							{	
+								wchar *wp=GD3Strings[10]+wcslen(GD3Strings[10]);
+								while (wp>=GD3Strings[10]) {
+									if (*wp==L'\n') {
+										memmove(wp+1,wp,(wcslen(wp)+1)*2);
+										*wp=L'\r';										
 									};
-									p--;
+									wp--;
 								};
-								strcpy(GD3Strings[10],tempstr);
 							};
 
 							free(p);	// Free memory for string buffer
 
 							// Set non-language-changing fields here
 							for (i=8;i<11;++i) {
-								SetDlgItemText(DlgWin,DlgFields[i],GD3Strings[i]);
+								if (!SetDlgItemTextW(DlgWin,DlgFields[i],GD3Strings[i])) {
+									// Widechar text setting failed, try WC2MB
+									char MBCSstring[1024*2]="";
+									WideCharToMultiByte(CP_ACP,0,GD3Strings[i],-1,MBCSstring,1024*2,NULL,NULL);
+									SetDlgItemText(DlgWin,DlgFields[i],MBCSstring);
+								};
 							};
 
 							PostMessage(DlgWin,WM_COMMAND,rbEnglish+FileInfoJapanese,0);
@@ -1068,9 +1213,10 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
             switch (LOWORD(wParam)) {
 				case IDOK:	// OK button
 					FileInfoJapanese=IsDlgButtonChecked(DlgWin,rbJapanese);
-					// fall through to close dialogue
+                    EndDialog(DlgWin,0);	// return 0 = OK
+                    return (TRUE);
                 case IDCANCEL:	// [X] button, Alt+F4, etc
-                    EndDialog(DlgWin,0);
+                    EndDialog(DlgWin,1);	// return 1 = Cancel, stops further dialogues being opened
                     return (TRUE);
 				case btnConfigure:
 					config(DlgWin);
@@ -1081,7 +1227,12 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
 						int i;
 						const int x=(LOWORD(wParam)==rbJapanese?1:0);
 						for (i=0;i<4;++i) {
-							SetDlgItemText(DlgWin,DlgFields[i*2+x],GD3Strings[i*2+x]);
+							if (!SetDlgItemTextW(DlgWin,DlgFields[i*2+x],GD3Strings[i*2+x])) {
+								// Widechar text setting failed, try WC2MB
+								char MBCSstring[1024*2]="";
+								WideCharToMultiByte(CP_ACP,0,GD3Strings[i],-1,MBCSstring,1024*2,NULL,NULL);
+								SetDlgItemText(DlgWin,DlgFields[i],MBCSstring);
+							};
 						};
 					};
 					break;
@@ -1256,7 +1407,6 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 {
 	int SamplesTillNextRead=0;
 	float WaitFactor,FractionalSamplesTillNextRead=0;
-	signed int l,r;
 
 	if ((PlaybackRate==0) || (FileRate==0)) {
 		WaitFactor=1.0;
@@ -1308,7 +1458,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 							OPLL_writeReg(opll,b1,b2);	// Write to the chip
 						}
 						break;
-					case 0x52:	// YM2612 write (port 1)
+					case 0x52:	// YM2612 write (port 0)
 						b1=ReadByte();
 						b2=ReadByte();
 						if (FMClock) {
@@ -1320,7 +1470,7 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 							YM2612Write(0,1,b2);
 						}
 						break;
-					case 0x53:	// YM2612 write (port 2)
+					case 0x53:	// YM2612 write (port 1)
 						b1=ReadByte();
 						b2=ReadByte();
 						if (FMClock) {
@@ -1403,103 +1553,76 @@ DWORD WINAPI __stdcall DecodeThread(void *b)
 				// Write sample
 				#if NCH == 2
 				// Stereo
-				// PSG
-				if (PSGClock) SN76489_GetValues(&l,&r); else l=r=0;	// Modification by BlackAura
+				{
+					int NumChipsUsed=0;
+					signed int l=0,r=0;
 
-				if (FMClock) {
-					// YM2413
-					if USINGCHIP(FM_YM2413) {	// Modification by BlackAura
-						int FMVal=OPLL_calc(opll);
+					// PSG
+					if (PSGClock) {
+						NumChipsUsed++;
+						SN76489_GetValues(&l,&r);
+					};
 
-						if (PSGClock) {
-							// If PSG then mix it
-							if (Overdrive) {
-								FMVal=(int)(YM2413toPSG*FMVal);
-								l=FMVal+(int)(l*(1-YM2413toPSG));
-								r=FMVal+(int)(r*(1-YM2413toPSG));
-							} else {
-								l+=FMVal;
-								r+=FMVal;
-							};
-						} else {
-							// else keep full volume
-							l=FMVal;
-							r=FMVal;
+					if (FMClock) {
+						// YM2413
+						if USINGCHIP(FM_YM2413) {
+							int FMVal=OPLL_calc(opll)/YM2413RelativeVol;
+							NumChipsUsed++;
+							l+=FMVal;
+							r+=FMVal;
+						};
+
+						// YM2612
+						if USINGCHIP(FM_YM2612) {
+							signed short *mameBuffer[2];
+							signed short mameLeft;
+							signed short mameRight;
+							NumChipsUsed++;
+							mameBuffer[0]=&mameLeft;
+							mameBuffer[1]=&mameRight;
+							if (YM2612Channels==0) {
+								YM2612UpdateOne(0,mameBuffer,1);
+								mameLeft /=YM2612RelativeVol;
+								mameRight/=YM2612RelativeVol;
+							} else
+								mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
+						
+							l+=mameLeft;
+							r+=mameRight;
+						};
+
+						// YM2151
+						if USINGCHIP(FM_YM2151) {
+							signed short *mameBuffer[2];
+							signed short mameLeft;
+							signed short mameRight;
+							NumChipsUsed++;
+							mameBuffer[0]=&mameLeft ;
+							mameBuffer[1]=&mameRight;
+							if (YM2151Channels==0) {
+								YM2151UpdateOne(0,mameBuffer,1);
+								mameLeft /=YM2151RelativeVol;
+								mameRight/=YM2151RelativeVol;
+							} else
+								mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
+
+							l+=mameLeft ;
+							r+=mameRight;
 						};
 					};
 
-					// YM2612
-					if USINGCHIP(FM_YM2612) {
-						signed short *mameBuffer[2];
-						signed short mameLeft;
-						signed short mameRight;
-						double MixAmount=DBL_MIN;	// Add different mixing for different chip combinations? maybe
-						if (PSGClock) MixAmount=YM2612toPSG;
-
-						// Get values
-						mameBuffer[0]=&mameLeft;
-						mameBuffer[1]=&mameRight;
-						if (YM2612Channels==0)
-							YM2612UpdateOne(0,mameBuffer,1);
-						else
-							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
-
-						if (MixAmount!=DBL_MIN) {	// Mix
-							if (Overdrive) {
-								l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
-								r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
-							} else {
-								l+=mameLeft;
-								r+=mameRight;
-							};
-						} else {	// No mixing
-							l=mameLeft ;
-							r=mameRight;
-						};
+					if ((Overdrive)&&(NumChipsUsed)) {
+						l=l*8/NumChipsUsed;
+						r=r*8/NumChipsUsed;
 					};
 
-					// YM2151 - mixing removed since it's unlikely to be needed
-					if USINGCHIP(FM_YM2151) {
-						signed short *mameBuffer[2];
-						signed short mameLeft;
-						signed short mameRight;
-//						double MixAmount=DBL_MIN;	// Add different mixing for different chip combinations? maybe
-//						if (PSGClock) MixAmount=YM2151toXXX;
+					// Clip values
+					if (l>+32767) l=+32767;	else if (l<-32767) l=-32767;
+					if (r>+32767) r=+32767;	else if (r<-32767) r=-32767;
 
-						// Get values
-						mameBuffer[0]=&mameLeft ;
-						mameBuffer[1]=&mameRight;
-
-						if (YM2151Channels==0)
-							YM2151UpdateOne(0,mameBuffer,1);
-						else
-							mameLeft=mameRight=0;	// Dodgy muting until per-channel gets done
-
-//						if (MixAmount!=DBL_MIN) {	// Mix?
-//							l=(int)((mameLeft )*MixAmount+l*(1-MixAmount));
-//							r=(int)((mameRight)*MixAmount+r*(1-MixAmount));
-//						} else {	// No mixing
-							l=mameLeft ;
-							r=mameRight;
-//						};
-					};
-
+					SampleBuffer[2*x]  =l;
+					SampleBuffer[2*x+1]=r;
 				};
-
-				if (Overdrive) {
-					l*=4;
-					if (l>+32767) l=+32767;
-					else
-					if (l<-32767) l=-32767;
-					r*=4;
-					if (r>+32767) r=+32767;
-					else
-					if (r<-32767) r=-32767;
-				};
-
-				SampleBuffer[2*x]  =l;
-				SampleBuffer[2*x+1]=r;
-
 				#else
 				// Mono - not working
 				#endif

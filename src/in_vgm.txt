@@ -1,12 +1,15 @@
-VGM input plugin 0.27
+VGM input plugin 0.28
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
 
+If you got the self-installing EXE version, just restart Winamp.
+
 To use: put in_vgm in Winamp's plugins\ folder, and restart Winamp.
+If you have Windows XP, put winamp.exe.manifest in Winamp's folder to make it use XP's Visual Styles.
 Load .vgm or .vgz files in Winamp; go to the "File types" preferences page to associate these extensions:
 
-1. Open the Preferences dialogue (press Ctrl+P, or right-click and choose Options -> Preferences...)
+1. Open the Preferences dialogue box (press Ctrl+P, or right-click and choose Options -> Preferences...)
 2. Choose "File types" from the tree on the left (it's the second item unless Winamp has changed since I wrote this)
 3. Make sure "vgm" and "vgz" are selected in the "Associated extensions" list (if they aren't in the list it's because you have another buggy plugin installed)
 
@@ -19,6 +22,63 @@ Automatic Japanese:
 
 The YM2413 emulation engine is EMU2413 by Mitsutaka Okazaki (http://www.angel.ne.jp/~okazaki/ym2413). The PSG engine is by me. The YM2612 and YM2151 engines are from MAME (http://www.mame.net) and were added by BlackAura. It uses Zlib by Jean-loup Gailly and Mark Adler.
 
+
+Dialogue boxes
+==============
+
+1.  VGM file & GD3 information
+
+To open:
+In the main window, press Alt+3; or double-click on the track title; or right-click on the track title and choose "File info".
+In the playlist editor, select some files and press Alt+3; or right-click and choose "File info"; or press the "MISC" button, choose "FILE INF" and then "File info..."; or right-click the "MISC" button, choose "File info" and then "File info...".
+
+This shows you information about the file and, if it has a GD3 inforamtion tag, it shows you information from there too. It's similar to the ID3 information box for MP3s, except that you can't edit the GD3 tag from within Winamp.
+
+Choose "English" or "Japanese" to display the GD3 information for that language, if available.
+
+If you see something like "????" for a GD3 entry then your version of Windows doesn't support translation from Unicode to MBCS. This is a major bug caused by Microsoft being too lazy to code functions that are in the Win32 API.
+
+Click on "View GD3 in browser" to open either the Winamp MiniBrowser or your regular web browser, with a page showing the GD3 tag. The reason this is done is, HTML 4.0 compliant browsers *do* have the ability to display Unicode text. You'll need to have appropriate fonts installed.
+
+Click on "smspower.org/music" to open the SMS Power Music section in the MiniBrowser or your regular web browser.
+
+Click on "Configure plugin..." to open the plugin configuration dialogue box.
+
+If you open this dialogue box for several files in the playlist editor, it will appear once for each file. Press Esc or press the [X] button to abort showing it once per file.
+
+
+2. VGM plugin configuration
+
+To open:
+Open the "VGM file & GD3 information" dialogue box; then press the "Configure plugin..." button or press Alt+P.
+Or open the Winamp Preferences dialogue box (Right-click or menu button -> Options -> Preferences...; or press Ctrl+P), choose the Plug-ins -> Input page, then double-click on the "VGM input plugin x0.xx  (IN_VGM.DLL)" item, or select it and click on the Configure button.
+
+Playback tab:
+
+- Looping: choose how many times to play the looped section in a VGM file, if it has one.
+
+- Playback rate: if "Recorded rate" is selected, all VGM v1.01+ files will be played at the rate specified in the file. VGM 1.00 files will be played at 60Hz.
+If 50Hz or 60Hz is selected, all files will be played at that rate - 50Hz corresponds to PAL/SECAM home systems used in Europe and Australia/NZ; 60Hz corresponds to NTSC systems used in Asia and the Americas.
+If you choose "Other" you can enter any rate, to play files extra slowly or quickly. Extreme values and fractional values are not allowed.
+The effect will only be heard when you restart the track, or when the next track starts.
+
+Channel muting: checkboxes will be available for each chip used by the VGM file. If a checkbox is checked then that channel's output will be heard. Uncheck a box to disable the corresponding channel.
+If the "Immediate update" button is selected, the effect will be instant, but the effect is a little jerky. If it is not selected then the effect will take the length of the output buffer (usually two seconds) to be heard.
+When you play another track, all channels are unmuted.
+
+Track title display: enter text to control what tile Winamp shows for the file. Enter special codes like "%t" to insert various GD3 entries. If the file has no GD3 tag then the filename will be used as the title.
+
+Quality: check the "High quality YM2413" checkbox to run the YM2413 engine at a slightly higher, but more accurate, rate, with conversion down to 44kHz. This will use more CPU time, and gives a marginal increase in quality.
+Check the "Overdrive" button to enable amplification of the output. This makes the output volume more similar to a typical MP3 file, and makes visualisations look better, but there is a greater chance of "clipping". Clipping is when many channels are used together and the total output exceeds the maximum value possible, causing poor quality sound.
+Uncheck it to produce quieter output which has much less chance of clipping. You'll need to turn up the volume yourself.
+If the "Immediate update" button in the Channel muting section is selected, the effect will be immediate - see above for more details.
+
+GD3/HTML display:
+If the "Use MiniBrowser to display HTML" checkbox is checked, anything that can use either the MiniBrowser of your regular web browser (see "VGM file & GD3 information" above) will use the MiniBrowser. If unckecked, it will use your regular web browser.
+If the above checkbox is checked, the "Auto-display GD3 tags..." checkbox will be enabled. If it's checked, GD3 tags will automatically be displayed in the MiniBrowser when tracks start.
+If the above checkbox is checked, the "Open MiniBrowser if it is closed" checkbox will be enabled. If it's checked, when auto-displaying GD3 tags, the MiniBrowser will be opened if it is closed.
+
+Note that cancelling this dialogue box does *not* restore the previous settings.
 
 Actually asked questions
 ========================
@@ -68,6 +128,20 @@ I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is qui
 
 History:
 ========
+
+0.28 12/9/02
+============
+
++ Configuration now uses a tabbed dialogue
++ Added WinXP "visual styles" support
++ Japanese text now shows under WinXP (hopefully)
++ Seeking bugs fixed
++ Cancelling the File Info dialogue box for a group of files now works properly
++ Improved mixing
++ Volume levels now match better for different chips
++ Fixed a typo which caused the YM2162 core not to be closed
++ Added some documentation to this file
++ Added a Help button which opens this file
 
 0.27 1/5/02
 ===========

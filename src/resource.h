@@ -8,9 +8,12 @@
 #define cbTone3                         107
 #define cbTone4                         108
 #define ebTrackTitle                    110
+#define DlgCfgMuting                    112
 #define ebPlaybackRate                  113
 #define rbRateOriginal                  114
+#define DlgCfgPlayback                  114
 #define rbRate50                        115
+#define DlgCfgGD3                       115
 #define rbRate60                        116
 #define rbRateOther                     117
 #define ebTitle                         200
@@ -63,6 +66,10 @@
 #define cbYM2151All                     1040
 #define cbYM2413HiQ                     1041
 #define cbOverDrive                     1042
+#define cbMuteImmediate                 1043
+#define btnReadMe                       1045
+#define tcMain                          1046
+#define IDC_ANIMATE1                    1047
 
 // Next default values for new objects
 // 
@@ -70,9 +77,9 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NO_MFC                     1
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        106
+#define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1043
+#define _APS_NEXT_CONTROL_VALUE         1048
 #define _APS_NEXT_SYMED_VALUE           111
 #endif
 #endif
