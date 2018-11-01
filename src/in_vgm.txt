@@ -1,4 +1,4 @@
-VGM input plugin 0.28
+VGM input plugin 0.29
 =====================
 
 This is a Winamp (2.xx) plugin for playing VGM files. VGM is a standard for frame-accurate logging of SN76489/SN76496 and various YMxxxx writes, originated by Dave, allowing various systems' games' music to be stored. See http://www.smspower.org/music for more information, and to download VGM music files.
@@ -62,16 +62,21 @@ If 50Hz or 60Hz is selected, all files will be played at that rate - 50Hz corres
 If you choose "Other" you can enter any rate, to play files extra slowly or quickly. Extreme values and fractional values are not allowed.
 The effect will only be heard when you restart the track, or when the next track starts.
 
-Channel muting: checkboxes will be available for each chip used by the VGM file. If a checkbox is checked then that channel's output will be heard. Uncheck a box to disable the corresponding channel.
-If the "Immediate update" button is selected, the effect will be instant, but the effect is a little jerky. If it is not selected then the effect will take the length of the output buffer (usually two seconds) to be heard.
+- Quality/emulation:
+"High quality YM2413" runs the YM2413 engine at the true clock rate instead of 44100Hz, and resamples down. The effect is marginal.
+"Overdrive" amplifies all sound to levels that are in danger of being clipped, but are similar to regular MP3s so visualisations work better.
+"Louder PSG noise" makes the PSG's noise twice as loud which, while inaccurate, sounds better and more like an SMS played through a TV.
+"Smooth PSG vol curve" applies a smooth logarithmic volume curve to the PSG volume levels; if unchecked, values taken from a real SMS's output are used instead. These values have reduced definition at high volume levels.
+
+Muting tab:
+
+Checkboxes will be available for each chip used by the VGM file. If a checkbox is checked then that channel's output will be heard. Uncheck a box to disable the corresponding channel.
+If the "Immediate update" button is selected, the effect will be instant, but it may be little "jerky". If it is not selected then the effect will take the length of the output buffer (usually two seconds) to be heard.
 When you play another track, all channels are unmuted.
 
-Track title display: enter text to control what tile Winamp shows for the file. Enter special codes like "%t" to insert various GD3 entries. If the file has no GD3 tag then the filename will be used as the title.
+Title/GD3 tab:
 
-Quality: check the "High quality YM2413" checkbox to run the YM2413 engine at a slightly higher, but more accurate, rate, with conversion down to 44kHz. This will use more CPU time, and gives a marginal increase in quality.
-Check the "Overdrive" button to enable amplification of the output. This makes the output volume more similar to a typical MP3 file, and makes visualisations look better, but there is a greater chance of "clipping". Clipping is when many channels are used together and the total output exceeds the maximum value possible, causing poor quality sound.
-Uncheck it to produce quieter output which has much less chance of clipping. You'll need to turn up the volume yourself.
-If the "Immediate update" button in the Channel muting section is selected, the effect will be immediate - see above for more details.
+Title formatting: enter text to control what tile Winamp shows for the file. Enter special codes like "%t" to insert various GD3 entries. If the file has no GD3 tag then the filename will be used as the title.
 
 GD3/HTML display:
 If the "Use MiniBrowser to display HTML" checkbox is checked, anything that can use either the MiniBrowser of your regular web browser (see "VGM file & GD3 information" above) will use the MiniBrowser. If unckecked, it will use your regular web browser.
@@ -128,6 +133,13 @@ I tried another, "AlienDSP". It works quite well, and the "Pseudo Stereo" is qui
 
 History:
 ========
+
+0.29 31/10/02
+=============
+
++ Added PSG noise boost option
++ Added PSG smooth volume curve option
++ Fixed bug in GD3 tag display
 
 0.28 12/9/02
 ============

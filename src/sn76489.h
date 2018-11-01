@@ -10,7 +10,10 @@ void SN76489_Write(const unsigned char data);
 void SN76489_GGStereoWrite(const unsigned char data);
 void SN76489_GetValues(int *left,int *right);
 
-int PSGMute; // expose this for inspection/modification for channel muting
+int
+	SN76489_Mute, // expose this for inspection/modification for channel muting
+	SN76489_BoostNoise,
+	SN76489_VolumeArray;
 
 #ifdef __cplusplus
 }

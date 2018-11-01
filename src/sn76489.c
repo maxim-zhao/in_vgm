@@ -18,20 +18,25 @@
 #include "sn76489.h"
 
 // Constants
-#define NoiseInitialState 0x4000
+#define NoiseInitialState  0x8000
 #define NoiseWhiteFeedback 0x0009
 
 // These values are taken from a real SMS2's output
-static const unsigned short int PSGVolumeValues[16] = {892,892,892,760,623,497,404,323,257,198,159,123,96,75,60,0};
+static const int PSGVolumeValues[2][16] = {
+	{892,892,892,760,623,497,404,323,257,198,159,123,96,75,60,0}, // I can't remember why 892... :P some scaling I did at some point
+	{892,774,669,575,492,417,351,292,239,192,150,113,80,50,24,0}
+};
 
 // Variables
 static float
   Clock,
   dClock;
-static unsigned char
+static int
   PSGFrequencyLowBits,
   Channel,
-  PSGStereo;
+  PSGStereo,
+  NumClocksForSample,
+  Active=0;		// Set to true by SN76489_Init(), if false then all procedures exit immediately;
 
 // PSG registers:
 static unsigned short int  Registers[8];		// Tone, vol x4
@@ -45,9 +50,6 @@ static   signed       char ToneFreqPos[4];		// Frequency channel flip-flops
 static   signed short int  Channels[4];			// Value of each channel, before stereo is applied
 static   signed long  int  IntermediatePos[4];	// intermediate values used at boundaries between + and -
 
-static unsigned char NumClocksForSample;
-
-static char Active = 0; // Set to true by SN76489_Init(), if false then all procedures exit immediately
 
 //------------------------------------------------------------------------------
 void SN76489_Init(const unsigned long PSGClockValue,const unsigned long SamplingRate)
@@ -63,15 +65,9 @@ void SN76489_Init(const unsigned long PSGClockValue,const unsigned long Sampling
 	Channel=4;
 	PSGStereo=0xff;
 	for (i=0;i<=3;i++) {
-/*
-		// Set volumes to off (0xf)
-		PSGVolumes[i]=0xf;
-		// Set all frequencies to 1
-		ToneFreqs[i]=1;
-*/
 		// Initialise PSG state
-		Registers[2*i]=1;		// tone
-		Registers[2*i+1]=0xf;	// vol
+		Registers[2*i]=1;		// tone freq=1
+		Registers[2*i+1]=0xf;	// vol=off
 		NoiseFreq=0x10;
 
 		// Set counters to 0
@@ -138,11 +134,13 @@ void SN76489_GetValues(int *left,int *right)
 
 	for (i=0;i<=2;++i)
 		if (IntermediatePos[i]!=LONG_MIN)
-			Channels[i]=(PSGMute >> i & 0x1)*PSGVolumeValues[Registers[2*i+1]]*IntermediatePos[i]/65536;
+			Channels[i]=(SN76489_Mute >> i & 0x1)*PSGVolumeValues[SN76489_VolumeArray][Registers[2*i+1]]*IntermediatePos[i]/65536;
 		else
-			Channels[i]=(PSGMute >> i & 0x1)*PSGVolumeValues[Registers[2*i+1]]*ToneFreqPos[i];
+			Channels[i]=(SN76489_Mute >> i & 0x1)*PSGVolumeValues[SN76489_VolumeArray][Registers[2*i+1]]*ToneFreqPos[i];
 
-	Channels[3]=(short)((PSGMute >> 3 & 0x1)*PSGVolumeValues[Registers[7]]*(NoiseShiftRegister & 0x1));
+	Channels[3]=(short)((SN76489_Mute >> 3 & 0x1)*PSGVolumeValues[SN76489_VolumeArray][Registers[7]]*(NoiseShiftRegister & 0x1));
+
+	if (SN76489_BoostNoise) Channels[3]<<=1; // Double noise volume to make some people happy
 
 	*left =0;
 	*right=0;

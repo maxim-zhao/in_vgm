@@ -69,7 +69,8 @@
 #define cbMuteImmediate                 1043
 #define btnReadMe                       1045
 #define tcMain                          1046
-#define IDC_ANIMATE1                    1047
+#define cbBoostPSGNoise                 1048
+#define cbSmoothPSGVolume               1049
 
 // Next default values for new objects
 // 
@@ -79,7 +80,7 @@
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        111
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1048
+#define _APS_NEXT_CONTROL_VALUE         1050
 #define _APS_NEXT_SYMED_VALUE           111
 #endif
 #endif

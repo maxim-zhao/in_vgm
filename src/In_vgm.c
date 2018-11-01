@@ -12,14 +12,14 @@
 #define YM2612RelativeVol 3	// Mega Drive/Genesis
 #define YM2151RelativeVol 4 // CPS1
 
-#define PLUGINNAME "VGM input plugin v0.28 beta"
+#define PLUGINNAME "VGM input plugin v0.29"
 #define MINVERSION 0x100
 #define REQUIREDMAJORVER 0x100
 #define INISECTION "Maxim's VGM input plugin"
 #define MINGD3VERSION 0x100
 #define REQUIREDGD3MAJORVER 0x100
 // PSG has 4 channels, 2^4-1=0xf
-#define PSGMUTE_ALLON 0xf
+#define SN76489_MUTE_ALLON 0xf
 // YM2413 has 14 (9 + 5 percussion), BUT it uses 1=mute, 0=on
 #define YM2413MUTE_ALLON 0
 // These two are preliminary and may change
@@ -368,8 +368,8 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			if (GetWindowLong(DlgWin,GWL_STYLE)&WS_CHILD) return FALSE;
 			MakeTabbedDialogue(DlgWin);
 			if (PSGClock) { // Check PSG channel checkboxes
-				for (i=0;i<4;i++) CheckDlgButton(CfgMuting,cbTone1+i,((PSGMute & (1<<i))>0));
-				CheckDlgButton(CfgMuting,cbPSGToneAll,((PSGMute&0x7)==0x7));
+				for (i=0;i<4;i++) CheckDlgButton(CfgMuting,cbTone1+i,((SN76489_Mute & (1<<i))>0));
+				CheckDlgButton(CfgMuting,cbPSGToneAll,((SN76489_Mute&0x7)==0x7));
 			} else {	// or disable them
 				for (i=0;i<4;i++) EnableWindow(GetDlgItem(CfgMuting,cbTone1+i),FALSE);
 				EnableWindow(GetDlgItem(CfgMuting,cbPSGToneAll),FALSE);
@@ -435,8 +435,10 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 			EnableWindow(GetDlgItem(CfgGD3,cbAutoMB     ),UseMB);
 			EnableWindow(GetDlgItem(CfgGD3,cbForceMBOpen),UseMB & AutoMB);
 			// Quality settings
-			CheckDlgButton(CfgPlayback,cbYM2413HiQ	 ,YM2413HiQ);
-			CheckDlgButton(CfgPlayback,cbOverDrive	 ,Overdrive);
+			CheckDlgButton(CfgPlayback,cbYM2413HiQ	    ,YM2413HiQ);
+			CheckDlgButton(CfgPlayback,cbOverDrive	    ,Overdrive);
+			CheckDlgButton(CfgPlayback,cbBoostPSGNoise  ,SN76489_BoostNoise);
+			CheckDlgButton(CfgPlayback,cbSmoothPSGVolume,SN76489_VolumeArray);
 
 			return (TRUE);
 		};
@@ -470,12 +472,12 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 				case cbTone2:
 				case cbTone3:
 				case cbTone4:
-					PSGMute=(IsDlgButtonChecked(CfgMuting,cbTone1)     )
-                          | (IsDlgButtonChecked(CfgMuting,cbTone2) << 1)
-                          | (IsDlgButtonChecked(CfgMuting,cbTone3) << 2)
-                          | (IsDlgButtonChecked(CfgMuting,cbTone4) << 3);
-					CheckDlgButton(CfgMuting,cbPSGToneAll,((PSGMute&7)==7));
-					if (ImmediateUpdate) setoutputtime(getoutputtime());
+					SN76489_Mute=(IsDlgButtonChecked(CfgMuting,cbTone1)     )
+								|(IsDlgButtonChecked(CfgMuting,cbTone2) << 1)
+								|(IsDlgButtonChecked(CfgMuting,cbTone3) << 2)
+								|(IsDlgButtonChecked(CfgMuting,cbTone4) << 3);
+					CheckDlgButton(CfgMuting,cbPSGToneAll,((SN76489_Mute&7)==7));
+					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
 					break;
 				case rbRateOriginal:
 				case rbRate50:
@@ -494,7 +496,7 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					for (i=0;i<15;i++) YM2413Channels|=(!IsDlgButtonChecked(CfgMuting,cbYM24131+i))<<i;
 					if USINGCHIP(FM_YM2413) {
 						OPLL_setMask(opll,YM2413Channels);
-						if (ImmediateUpdate) setoutputtime(getoutputtime());
+						if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
 					}
 					CheckDlgButton(CfgMuting,cbYM2413ToneAll,((YM2413Channels&0x1ff )==0));
 					CheckDlgButton(CfgMuting,cbYM2413PercAll,((YM2413Channels&0x3e00)==0));
@@ -535,22 +537,30 @@ BOOL CALLBACK ConfigDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM lP
 					break;
 				case cbYM2612All:
 					YM2612Channels=!IsDlgButtonChecked(CfgMuting,cbYM2612All);
-					if (ImmediateUpdate) setoutputtime(getoutputtime());
+					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
 					break;
 				case cbYM2151All:
 					YM2151Channels=!IsDlgButtonChecked(CfgMuting,cbYM2151All);
-					if (ImmediateUpdate) setoutputtime(getoutputtime());
+					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
 					break;
 				case cbYM2413HiQ:
 					YM2413HiQ=IsDlgButtonChecked(CfgPlayback,cbYM2413HiQ);
 					if USINGCHIP(FM_YM2413) {
 						OPLL_set_quality(opll,YM2413HiQ);
-						if (ImmediateUpdate) setoutputtime(getoutputtime());
+						if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
 					}
 					break;
 				case cbOverDrive:
 					Overdrive=IsDlgButtonChecked(CfgPlayback,cbOverDrive);
 					if (ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					break;
+				case cbBoostPSGNoise:
+					SN76489_BoostNoise=IsDlgButtonChecked(CfgPlayback,cbBoostPSGNoise);
+					if (PSGClock&&ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
+					break;
+				case cbSmoothPSGVolume:
+					SN76489_VolumeArray=IsDlgButtonChecked(CfgPlayback,cbSmoothPSGVolume);
+					if (PSGClock&&ImmediateUpdate&&(mod.outMod)) setoutputtime(getoutputtime());
 					break;
 				case cbMuteImmediate:
 					ImmediateUpdate=IsDlgButtonChecked(CfgMuting,cbMuteImmediate);
@@ -610,7 +620,8 @@ void about(HWND hwndParent)
 		"  output after I calculated the feedback network; but it doesn't match\n"
 		"  some other chips.\n"
 		"YM2413 - via EMU2413 0.55 (http://www.angel.ne.jp/~okazaki/ym2413).\n"
-		"YM2612 & YM2151 - via MAME 0.37 FM core, thanks to BlackAura\n\n"
+		"YM2612 & YM2151 - via MAME FM core (Jarek Burczynski, Hiro-shi),\n"
+		"  thanks to BlackAura\n\n"
 		"Don\'t be put off by the pre-1.0 version numbers. This is a non-commercial\n"
 		"project and as such it is permanently in beta.\n\n"
 		"Thanks go to:\n"
@@ -645,10 +656,12 @@ void init() {
 	YM2413HiQ       =GetPrivateProfileInt(INISECTION,"High quality YM2413" ,0,INIFileName);
 	Overdrive       =GetPrivateProfileInt(INISECTION,"Overdrive"           ,1,INIFileName);
 	ImmediateUpdate =GetPrivateProfileInt(INISECTION,"Immediate update"    ,1,INIFileName);
+	SN76489_BoostNoise=GetPrivateProfileInt(INISECTION,"Boost PSG noise"   ,0,INIFileName);
+	SN76489_VolumeArray=GetPrivateProfileInt(INISECTION,"PSG volume curve" ,0,INIFileName);
 
 	GetPrivateProfileString(INISECTION,"Title format","%t (%g) - %a",TrackTitleFormat,100,INIFileName);
 
-	PSGMute=0xf;	// important
+	SN76489_Mute=0xf;
 };
 
 //-----------------------------------------------------------------
@@ -673,6 +686,8 @@ void quit() {
 	WritePrivateProfileString(INISECTION,"High quality YM2413" ,itoa(YM2413HiQ       ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Overdrive"           ,itoa(Overdrive       ,tempstr,10),INIFileName);
 	WritePrivateProfileString(INISECTION,"Immediate update"    ,itoa(ImmediateUpdate ,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"Boost PSG noise"     ,itoa(SN76489_BoostNoise,tempstr,10),INIFileName);
+	WritePrivateProfileString(INISECTION,"PSG volume curve"    ,itoa(SN76489_VolumeArray,tempstr,10),INIFileName);
 
 	DeleteFile(TextFileName);
 };
@@ -767,7 +782,7 @@ int play(char *fn)
 
 	if ((*lastfn) && (strcmp(fn,lastfn)!=0)) {
 		// If file has changed, reset channel muting
-		PSGMute=PSGMUTE_ALLON;
+		SN76489_Mute  =SN76489_MUTE_ALLON;
 		YM2413Channels=YM2413MUTE_ALLON;
 		YM2612Channels=YM2612MUTE_ALLON;
 		YM2151Channels=YM2151MUTE_ALLON;
@@ -1228,10 +1243,9 @@ BOOL CALLBACK FileInfoDialogProc(HWND DlgWin,UINT wMessage,WPARAM wParam,LPARAM 
 						const int x=(LOWORD(wParam)==rbJapanese?1:0);
 						for (i=0;i<4;++i) {
 							if (!SetDlgItemTextW(DlgWin,DlgFields[i*2+x],GD3Strings[i*2+x])) {
-								// Widechar text setting failed, try WC2MB
 								char MBCSstring[1024*2]="";
-								WideCharToMultiByte(CP_ACP,0,GD3Strings[i],-1,MBCSstring,1024*2,NULL,NULL);
-								SetDlgItemText(DlgWin,DlgFields[i],MBCSstring);
+								WideCharToMultiByte(CP_ACP,0,GD3Strings[i*2+x],-1,MBCSstring,1024*2,NULL,NULL);
+								SetDlgItemText(DlgWin,DlgFields[i*2+x],MBCSstring);
 							};
 						};
 					};
